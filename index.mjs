@@ -20,7 +20,13 @@ async function run(messages) { while (true) {
   const response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: process.env.MODEL || 'gpt-5.4', messages, tools: toolsDef, stream: true }) }); if (!response.ok) { const error = await response.json().catch(()=>({})); throw new Error(error.error?.message || `HTTP ${response.status}`); }
 
   // — Parse SSE stream: print content tokens, accumulate tool-call deltas by index —
+  // SSE frames are delimited by double newlines (\n\n). We buffer raw bytes and split on
+  // that boundary, then extract the JSON after each "data: " prefix (per SSE spec).
   const message = { role: 'assistant', content: '' }, decoder = new TextDecoder(); let buffer = '';
+  // Tool-call deltas arrive as fragments across multiple SSE events, each keyed by tc.index.
+  // We merge them into `slot` objects: IDs and types overwrite, but name and arguments strings
+  // are *appended* because the API streams them in pieces (e.g. arguments may arrive as
+  // '{"com' then 'mand": "ls"}').  The completed slots form the tool_calls array for execution.
   for await (const chunk of response.body) { buffer += decoder.decode(chunk, {stream:true}); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; } if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id:'', type:'function', function:{name:'',arguments:''} }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; if (tc.function?.name) slot.function.name += tc.function.name; if (tc.function?.arguments) slot.function.arguments += tc.function.arguments; } } } } }
   if (message.content) process.stdout.write('\n'); messages.push(message); if (!message.tool_calls) return;
 
@@ -28,11 +34,14 @@ async function run(messages) { while (true) {
   for (const toolCall of message.tool_calls) {
     const {name} = toolCall.function, args = JSON.parse(toolCall.function.arguments);
     console.log(gray(`⟡ ${name}(${JSON.stringify(args)})`)); if (!tools[name]) { messages.push({ role: 'tool', tool_call_id: toolCall.id, content: `Error: unknown tool "${name}". Available: ${Object.keys(tools).join(', ')}` }); continue; } const result = String(await tools[name](args));
+    // Log truncated to 200 chars for terminal readability; the model gets the full result.
     console.log(gray(result.length > 200 ? result.slice(0, 200) + '…' : result)); messages.push({ role: 'tool', tool_call_id: toolCall.id, content: result });
 
   } } }
 
 // ── System prompt ────────────────────────────────────────────────────
+// SYSTEM_PROMPT env var fully overrides the built-in default (ternary, not merge).
+// CWD and date are always appended so the model knows where it is and when.
 const SYSTEM = (process.env.SYSTEM_PROMPT || 'You are mi, an autonomous agent. You run in a raw terminal—no markdown renderer, so avoid **, `, #, and ```. Use whitespace and plain punctuation. Be concise.\n\nAct rather than speculate. Explore the problem, form a plan, execute one step at a time, verify each step before proceeding. If something fails, diagnose and retry. Keep going until the task is complete. When a request matches a skill description below, load that skill and follow it.\n\nMinimize context usage when reading files: head -20 for starts, tail -20 for ends, sed -n \'10,30p\' for ranges, grep -n to locate then read around matches. Reserve cat for short files. Edit with sed -i or heredocs (cat > file <<\'EOF\'). Always read before editing.\n\nWhen done, show the command output that proves it—not a summary.') + `\nCWD: ${process.cwd()}\nDate: ${new Date().toISOString()}`;
 
 // ── CLI setup: history, flags, context injection ─────────────────────
@@ -40,7 +49,7 @@ const history = [{ role: 'system', content: SYSTEM }], getArg = key => { const i
 
 if (process.argv.includes('-h')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
 
-/* Append -f file contents, AGENTS.md, and available skill descriptions to system message. */
+/* Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message. */
 const fileArg = getArg('-f'); if (fileArg) history[0].content += `\n\nFile (${fileArg}):\n` + readFileSync(fileArg, 'utf8'); if (existsSync('AGENTS.md')) history[0].content += '\n' + readFileSync('AGENTS.md', 'utf8'); const skills = listSkills(); if (skills.length) history[0].content += '\n\nSkill descriptions:\n' + skills.join('\n');
 
 // ── One-shot modes: -p flag and stdin pipe ───────────────────────────
