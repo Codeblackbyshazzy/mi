@@ -9,7 +9,7 @@ Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir })
 
 // ── Tool discovery ───────────────────────────────────────────────────
 /* Load tool modules; each exports {name, description, parameters, handler}. */
-const toolMods = await Promise.all(readdirSync(DIR + 'tools').filter(f => f.endsWith('.mjs')).map(f => import(DIR + 'tools/' + f))), defs = toolMods.map(m => m.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(m => m.listSkills);
+const toolMods = await Promise.all(readdirSync(`${DIR}tools`).filter(f => f.endsWith('.mjs')).map(f => import(`${DIR}tools/${f}`))), defs = toolMods.map(m => m.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(m => m.listSkills);
 const tools = Object.fromEntries(defs.map(d => [d.name, d.handler])), toolSchemas = defs.map(d => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.parameters } }));
 
 // ── Agent loop: chat → stream → execute tools → repeat ──────────────
@@ -49,7 +49,7 @@ const SYSTEM = (process.env.SYSTEM_PROMPT || 'You are mi, an autonomous agent. Y
 
 // ── CLI setup: history, flags, context injection ─────────────────────
 // getArg: returns the value after a flag (e.g. getArg('-p') → prompt string), or false if absent.
-// Uses short-circuit: indexOf returns -1 when missing, so `i >= 0 && argv[i+1]` is false without a flag.
+// Uses short-circuit: indexOf returns -1 when missing, so `i >= 0 && argv[i + 1]` is false without a flag.
 const history = [{ role: 'system', content: SYSTEM }], getArg = key => { const i = process.argv.indexOf(key); return i >= 0 && process.argv[i + 1]; };
 
 if (process.argv.includes('-h')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
@@ -64,9 +64,9 @@ if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.st
 
 // ── Interactive REPL ─────────────────────────────────────────────────
 // readline setup, version banner, then an infinite prompt loop
-const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(DIR + 'package.json', 'utf8')).version; console.log(`\x1b[38;5;208m◰ mi\x1b[90m/${version}\x1b[0m`);
+const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; console.log(`\x1b[38;5;208m◰ mi\x1b[90m/${version}\x1b[0m`);
 
 // Ctrl-D (EOF) → clean exit; then loop: read input → run agent → repeat
 // /reset: keep system prompt (index 0), drop all conversation history
 // Error recovery: pop the failed user message so the model never sees it
-readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(gray('─────') + '\n'); try { await run(history); } catch (error) { console.error(`\x1b[31m✗ ${error.message}\x1b[0m`); history.pop(); } } }
+readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(`${gray('─────')}\n`); try { await run(history); } catch (error) { console.error(`\x1b[31m✗ ${error.message}\x1b[0m`); history.pop(); } } }
