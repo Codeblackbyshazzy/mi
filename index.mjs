@@ -10,7 +10,7 @@ Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir })
 // ── Tool discovery ───────────────────────────────────────────────────
 /* Load tool modules; each exports {name, description, parameters, handler}. */
 const toolMods = await Promise.all(readdirSync(DIR + 'tools').filter(f => f.endsWith('.mjs')).map(f => import(DIR + 'tools/' + f))), defs = toolMods.map(m => m.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(m => m.listSkills);
-const tools = Object.fromEntries(defs.map(d => [d.name, d.handler])), toolsDef = defs.map(d => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.parameters } }));
+const tools = Object.fromEntries(defs.map(d => [d.name, d.handler])), toolSchemas = defs.map(d => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.parameters } }));
 
 // ── Agent loop: chat → stream → execute tools → repeat ──────────────
 /*
@@ -20,7 +20,7 @@ const tools = Object.fromEntries(defs.map(d => [d.name, d.handler])), toolsDef =
 async function run(messages) { while (true) {
 
   // — Send streaming chat completion request —
-  const response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: process.env.MODEL || 'gpt-5.4', messages, tools: toolsDef, stream: true }) }); if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error?.message || `HTTP ${response.status}`); }
+  const response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: process.env.MODEL || 'gpt-5.4', messages, tools: toolSchemas, stream: true }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error?.message || `HTTP ${response.status}`); }
 
   // — Parse SSE stream: print content tokens, accumulate tool-call deltas by index —
   // SSE frames are delimited by double newlines (\n\n). We buffer raw bytes and split on
