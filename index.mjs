@@ -10,7 +10,8 @@ Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir })
 
 // ── Tool discovery ───────────────────────────────────────────────────
 // Load tool modules; each exports {name, description, parameters, handler}.
-const toolMods = await Promise.all(readdirSync(`${DIR}tools`).filter(file => file.endsWith('.mjs')).map(file => import(`${DIR}tools/${file}`))), defs = toolMods.map(mod => mod.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(mod => mod.listSkills);
+// ANSI helpers: 90 = gray (dim), 31 = red (error), 38;5;208 = orange (brand)
+const toolMods = await Promise.all(readdirSync(`${DIR}tools`).filter(file => file.endsWith('.mjs')).map(file => import(`${DIR}tools/${file}`))), defs = toolMods.map(mod => mod.default), gray = s => `\x1b[90m${s}\x1b[0m`, red = s => `\x1b[31m${s}\x1b[0m`, { listSkills } = toolMods.find(mod => mod.listSkills);
 const tools = Object.fromEntries(defs.map(def => [def.name, def.handler])), toolSchemas = defs.map(def => ({ type: 'function', function: { name: def.name, description: def.description, parameters: def.parameters } }));
 
 // ── Agent loop: chat → stream → execute tools → repeat ──────────────
@@ -29,7 +30,7 @@ async function run(messages) { while (true) {
   // We merge them into `slot` objects: IDs and types overwrite, but name and arguments strings
   // are *appended* because the API streams them in pieces (e.g. arguments may arrive as
   // '{"com' then 'mand": "ls"}').  The completed slots form the tool_calls array for execution.
-  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; } if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id: '', type: 'function', function: { name: '', arguments: '' } }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; const fn = tc.function; if (fn?.name) slot.function.name += fn.name; if (fn?.arguments) slot.function.arguments += fn.arguments; } } } } }
+  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); /* skip past \n\n delimiter */ for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); /* strip "data: " prefix */ if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; /* single choice; we never request n>1 */ if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; } if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id: '', type: 'function', function: { name: '', arguments: '' } }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; const fn = tc.function; if (fn?.name) slot.function.name += fn.name; if (fn?.arguments) slot.function.arguments += fn.arguments; } } } } }
   if (message.content) process.stdout.write('\n'); messages.push(message); if (!message.tool_calls) return;
 
   // ─ Execute each tool call and push results back into history ─
@@ -63,9 +64,9 @@ if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.st
 
 // ── Interactive REPL ─────────────────────────────────────────────────
 // readline setup, version banner, then an infinite prompt loop
-const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; console.log(`\x1b[38;5;208m◰ mi\x1b[90m/${version}\x1b[0m`);
+const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; console.log(`\x1b[38;5;208m◰ mi\x1b[90m/${version}\x1b[0m`); /* orange brand + gray version */
 
 // Ctrl-D (EOF) → clean exit; then loop: read input → run agent → repeat
 // /reset: keep system prompt (index 0), drop all conversation history
 // Error recovery: pop the failed user message so the model never sees it
-readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(`${gray('─────')}\n`); try { await run(history); } catch (error) { console.error(`\x1b[31m✗ ${error.message}\x1b[0m`); history.pop(); } } }
+readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); /* keep system prompt at [0] */ console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(`${gray('─────')}\n`); try { await run(history); } catch (error) { console.error(red(`✗ ${error.message}`)); history.pop(); } } }
