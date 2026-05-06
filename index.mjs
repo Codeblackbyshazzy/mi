@@ -10,8 +10,8 @@ Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir })
 
 // ── Tool discovery ───────────────────────────────────────────────────
 // Load tool modules; each exports {name, description, parameters, handler}.
-const toolMods = await Promise.all(readdirSync(`${DIR}tools`).filter(f => f.endsWith('.mjs')).map(f => import(`${DIR}tools/${f}`))), defs = toolMods.map(m => m.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(m => m.listSkills);
-const tools = Object.fromEntries(defs.map(d => [d.name, d.handler])), toolSchemas = defs.map(d => ({ type: 'function', function: { name: d.name, description: d.description, parameters: d.parameters } }));
+const toolMods = await Promise.all(readdirSync(`${DIR}tools`).filter(file => file.endsWith('.mjs')).map(file => import(`${DIR}tools/${file}`))), defs = toolMods.map(mod => mod.default), gray = s => `\x1b[90m${s}\x1b[0m`, { listSkills } = toolMods.find(mod => mod.listSkills);
+const tools = Object.fromEntries(defs.map(def => [def.name, def.handler])), toolSchemas = defs.map(def => ({ type: 'function', function: { name: def.name, description: def.description, parameters: def.parameters } }));
 
 // ── Agent loop: chat → stream → execute tools → repeat ──────────────
 // Streams the API response, executes any tool calls, and loops until the
@@ -57,7 +57,7 @@ if (process.argv.includes('-h')) { console.log('usage: mi [-p prompt] [-f file] 
 const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n${readFileSync(fileArg, 'utf8')}`; if (existsSync('AGENTS.md')) sysMsg.content += `\n${readFileSync('AGENTS.md', 'utf8')}`; const skills = listSkills(); if (skills.length) sysMsg.content += `\n\nSkill descriptions:\n${skills.join('\n')}`;
 
 // ── One-shot modes: -p flag and stdin pipe ───────────────────────────
-if (getArg('-p')) { history.push({ role: 'user', content: getArg('-p') }); await run(history); process.exit(0); }
+const prompt = getArg('-p'); if (prompt) { history.push({ role: 'user', content: prompt }); await run(history); process.exit(0); }
 
 if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.stdin) input += chunk; history.push({ role: 'user', content: input.trim() }); await run(history); process.exit(0); }
 

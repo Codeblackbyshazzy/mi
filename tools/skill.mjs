@@ -4,7 +4,7 @@
 // Regex: ^name:\s*(.+)$ with /m flag — anchors match per-line so we find "name:" at any line start,
 // skip whitespace after the colon, and capture everything to EOL. Optional chaining returns undefined
 // if the field is missing (not all SKILL.md files include both fields).
-const parseFrontmatter = content => ({ name: content.match(/^name:\s*(.+)$/m)?.[1], description: content.match(/^description:\s*(.+)$/m)?.[1] || '' }), skillDirs = () => [`${process.env.MI_DIR}skills/`, `${process.env.HOME || homedir()}/.agents/skills/`], loadSkill = name => { const path = skillDirs().map(d => `${d}${name}/SKILL.md`).find(existsSync); return path && readFileSync(path, 'utf8'); };
+const parseFrontmatter = content => ({ name: content.match(/^name:\s*(.+)$/m)?.[1], description: content.match(/^description:\s*(.+)$/m)?.[1] || '' }), skillDirs = () => [`${process.env.MI_DIR}skills/`, `${process.env.HOME || homedir()}/.agents/skills/`], loadSkill = name => { const path = skillDirs().map(dir => `${dir}${name}/SKILL.md`).find(existsSync); return path && readFileSync(path, 'utf8'); };
 
 // ── Skill listing ───────────────────────────────────────────────────
 // Scan all skill directories; return "- name: description" bullets for each valid SKILL.md found
