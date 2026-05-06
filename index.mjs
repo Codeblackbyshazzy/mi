@@ -30,7 +30,8 @@ async function run(messages) { while (true) {
   // We merge them into `slot` objects: IDs and types overwrite, but name and arguments strings
   // are *appended* because the API streams them in pieces (e.g. arguments may arrive as
   // '{"com' then 'mand": "ls"}').  The completed slots form the tool_calls array for execution.
-  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); /* skip past \n\n delimiter */ for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); /* strip "data: " prefix */ if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; /* single choice; we never request n>1 */ if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; }
+  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); /* skip past \n\n delimiter */
+    for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); /* strip "data: " prefix */ if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; /* single choice; we never request n>1 */ if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; }
     if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id: '', type: 'function', function: { name: '', arguments: '' } }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; const fn = tc.function; if (fn?.name) slot.function.name += fn.name; if (fn?.arguments) slot.function.arguments += fn.arguments; } } } } }
   if (message.content) process.stdout.write('\n'); messages.push(message); if (!message.tool_calls) return;
 
@@ -38,9 +39,7 @@ async function run(messages) { while (true) {
   for (const toolCall of message.tool_calls) { const { name, arguments: rawArgs } = toolCall.function, args = JSON.parse(rawArgs);
     console.log(gray(`⟡ ${name}(${JSON.stringify(args)})`)); if (!tools[name]) { messages.push({ role: 'tool', tool_call_id: toolCall.id, content: `Error: unknown tool "${name}". Available: ${Object.keys(tools).join(', ')}` }); continue; } const result = String(await tools[name](args));
     // Log truncated to 200 chars for terminal readability; the model gets the full result.
-    console.log(gray(result.length > 200 ? `${result.slice(0, 200)}…` : result)); messages.push({ role: 'tool', tool_call_id: toolCall.id, content: result });
-
-  } } }
+    console.log(gray(result.length > 200 ? `${result.slice(0, 200)}…` : result)); messages.push({ role: 'tool', tool_call_id: toolCall.id, content: result }); } } }
 
 // ── System prompt ────────────────────────────────────────────────────
 // SYSTEM_PROMPT env var fully overrides the built-in default (ternary, not merge).
