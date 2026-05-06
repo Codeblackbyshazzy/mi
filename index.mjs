@@ -5,7 +5,7 @@
 import { createInterface } from 'readline'; import { readFileSync, existsSync, readdirSync } from 'fs'; import { spawn } from 'child_process'; import { homedir } from 'os';
 // Globals: tools run in a separate module scope but need fs/spawn — expose via global rather than re-importing.
 // DIR = package root (for tool/skill discovery); MI_DIR/MI_PATH = env vars so tools can locate project assets.
-Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; process.env.MI_DIR = DIR; process.env.MI_PATH = new URL(import.meta.url).pathname; if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
+Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname }); if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
 
 // ── Tool discovery ───────────────────────────────────────────────────
 /* Load tool modules; each exports {name, description, parameters, handler}. */
@@ -30,12 +30,12 @@ async function run(messages) { while (true) {
   // We merge them into `slot` objects: IDs and types overwrite, but name and arguments strings
   // are *appended* because the API streams them in pieces (e.g. arguments may arrive as
   // '{"com' then 'mand": "ls"}').  The completed slots form the tool_calls array for execution.
-  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; } if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id: '', type: 'function', function: { name: '', arguments: '' } }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; if (tc.function?.name) slot.function.name += tc.function.name; if (tc.function?.arguments) slot.function.arguments += tc.function.arguments; } } } } }
+  for await (const chunk of response.body) { buffer += decoder.decode(chunk, { stream: true }); let pos; while ((pos = buffer.indexOf('\n\n')) >= 0) { const event = buffer.slice(0, pos); buffer = buffer.slice(pos + 2); for (const line of event.split('\n')) { if (!line.startsWith('data: ')) continue; const payload = line.slice(6); if (payload === '[DONE]') continue; let json; try { json = JSON.parse(payload); } catch { continue; } if (json.error) throw new Error(json.error.message || JSON.stringify(json.error)); const delta = json.choices?.[0]?.delta; if (!delta) continue; if (delta.content) { process.stdout.write(delta.content); message.content += delta.content; } if (delta.tool_calls) { message.tool_calls ||= []; for (const tc of delta.tool_calls) { const slot = message.tool_calls[tc.index] ||= { id: '', type: 'function', function: { name: '', arguments: '' } }; if (tc.id) slot.id = tc.id; if (tc.type) slot.type = tc.type; const fn = tc.function; if (fn?.name) slot.function.name += fn.name; if (fn?.arguments) slot.function.arguments += fn.arguments; } } } } }
   if (message.content) process.stdout.write('\n'); messages.push(message); if (!message.tool_calls) return;
 
   // — Execute each tool call and push results back into history —
   for (const toolCall of message.tool_calls) {
-    const { name } = toolCall.function, args = JSON.parse(toolCall.function.arguments);
+    const { name, arguments: rawArgs } = toolCall.function, args = JSON.parse(rawArgs);
     console.log(gray(`⟡ ${name}(${JSON.stringify(args)})`)); if (!tools[name]) { messages.push({ role: 'tool', tool_call_id: toolCall.id, content: `Error: unknown tool "${name}". Available: ${Object.keys(tools).join(', ')}` }); continue; } const result = String(await tools[name](args));
     // Log truncated to 200 chars for terminal readability; the model gets the full result.
     console.log(gray(result.length > 200 ? result.slice(0, 200) + '…' : result)); messages.push({ role: 'tool', tool_call_id: toolCall.id, content: result });
@@ -55,7 +55,7 @@ const history = [{ role: 'system', content: SYSTEM }], getArg = key => { const i
 if (process.argv.includes('-h')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
 
 /* Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message. */
-const fileArg = getArg('-f'); if (fileArg) history[0].content += `\n\nFile (${fileArg}):\n` + readFileSync(fileArg, 'utf8'); if (existsSync('AGENTS.md')) history[0].content += '\n' + readFileSync('AGENTS.md', 'utf8'); const skills = listSkills(); if (skills.length) history[0].content += '\n\nSkill descriptions:\n' + skills.join('\n');
+const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n` + readFileSync(fileArg, 'utf8'); if (existsSync('AGENTS.md')) sysMsg.content += '\n' + readFileSync('AGENTS.md', 'utf8'); const skills = listSkills(); if (skills.length) sysMsg.content += '\n\nSkill descriptions:\n' + skills.join('\n');
 
 // ── One-shot modes: -p flag and stdin pipe ───────────────────────────
 if (getArg('-p')) { history.push({ role: 'user', content: getArg('-p') }); await run(history); process.exit(0); }
@@ -64,9 +64,9 @@ if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.st
 
 // ── Interactive REPL ─────────────────────────────────────────────────
 // readline setup, version banner, then an infinite prompt loop
-const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(DIR + 'package.json', 'utf8')).version; console.log('\x1b[38;5;208m◰ mi\x1b[90m/' + version + '\x1b[0m');
+const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(DIR + 'package.json', 'utf8')).version; console.log(`\x1b[38;5;208m◰ mi\x1b[90m/${version}\x1b[0m`);
 
 // Ctrl-D (EOF) → clean exit; then loop: read input → run agent → repeat
 // /reset: keep system prompt (index 0), drop all conversation history
 // Error recovery: pop the failed user message so the model never sees it
-readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(gray('─────') + '\n'); try { await run(history); } catch (error) { console.error('\x1b[31m✗ ' + error.message + '\x1b[0m'); history.pop(); } } }
+readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(gray('─────') + '\n'); try { await run(history); } catch (error) { console.error(`\x1b[31m✗ ${error.message}\x1b[0m`); history.pop(); } } }
