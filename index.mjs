@@ -49,6 +49,10 @@ if (getArg('-p')) { history.push({ role: 'user', content: getArg('-p') }); await
 if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.stdin) input += chunk; history.push({ role: 'user', content: input.trim() }); await run(history); process.exit(0); }
 
 // ── Interactive REPL ─────────────────────────────────────────────────
+// readline setup, version banner, then an infinite prompt loop
 const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); const version = JSON.parse(readFileSync(DIR+'package.json','utf8')).version; console.log('\x1b[38;5;208m◰ mi\x1b[90m/'+version+'\x1b[0m');
 
+// Ctrl-D (EOF) → clean exit; then loop: read input → run agent → repeat
+// /reset: keep system prompt (index 0), drop all conversation history
+// Error recovery: pop the failed user message so the model never sees it
 readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(gray('─────')+'\n'); try { await run(history); } catch(error) { console.error('\x1b[31m✗ ' + error.message + '\x1b[0m'); history.pop(); } } }
