@@ -1,0 +1,259 @@
+"""Harbor agent adapter for mi — a minimal autonomous agent CLI.
+
+Includes diagnostics to debug failure modes:
+- Pre-flight LLM connectivity check with timing
+- Timestamped output (each line prefixed with elapsed seconds)
+- Separate stderr capture
+- Network diagnostics on failure
+"""
+
+import os
+import shlex
+from pathlib import Path
+
+from harbor.agents.installed.base import BaseInstalledAgent, with_prompt_template
+from harbor.environments.base import BaseEnvironment
+from harbor.models.agent.context import AgentContext
+
+
+# Wrapper script that adds timestamps and captures diagnostics
+DIAGNOSTIC_WRAPPER = r'''#!/bin/bash
+set -o pipefail
+
+LOG_DIR="/logs/agent"
+STDOUT_LOG="$LOG_DIR/mi-output.txt"
+STDERR_LOG="$LOG_DIR/mi-stderr.txt"
+TIMING_LOG="$LOG_DIR/timing.txt"
+DIAG_LOG="$LOG_DIR/diagnostics.txt"
+
+mkdir -p "$LOG_DIR"
+
+log_diag() {
+    echo "[$(date -Iseconds)] $1" >> "$DIAG_LOG"
+}
+
+# Trap signals to run post-mortem even if killed externally
+cleanup() {
+    local exit_code=$?
+    log_diag "=== SIGNAL/EXIT CLEANUP (code=$exit_code) ==="
+    log_diag "Output lines: $(wc -l < "$STDOUT_LOG" 2>/dev/null || echo 0)"
+    log_diag "Last output timestamp: $(tail -1 "$STDOUT_LOG" 2>/dev/null | grep -oE '^\[[0-9.]+s\]' || echo 'none')"
+
+    # Post-mortem LLM check
+    POST_CODE=$(curl -s -m 5 -o /dev/null -w "%{http_code}" \
+        "${OPENAI_BASE_URL:-https://api.openai.com}/v1/models" \
+        -H "Authorization: Bearer $OPENAI_API_KEY" 2>/dev/null || echo "failed")
+    log_diag "Post-mortem LLM status: HTTP $POST_CODE"
+
+    # Network check
+    PING_RESULT=$(ping -c 1 -W 2 172.17.0.1 2>&1 | grep -E 'time=|unreachable' || echo 'failed')
+    log_diag "Post-mortem ping gateway: $PING_RESULT"
+
+    echo "end=$(date +%s.%N)" >> "$TIMING_LOG"
+    echo "exit_code=$exit_code" >> "$TIMING_LOG"
+    log_diag "=== CLEANUP COMPLETE ==="
+}
+trap cleanup EXIT TERM INT
+
+# Record start time
+START_TIME=$(date +%s.%N)
+log_diag "=== MI AGENT START ==="
+log_diag "LLM endpoint: ${OPENAI_BASE_URL:-https://api.openai.com}"
+log_diag "Model: ${MODEL:-gpt-5.4}"
+
+# Pre-flight: test LLM connectivity
+log_diag "Pre-flight LLM connectivity check..."
+PREFLIGHT_START=$(date +%s.%N)
+HEALTH_RESPONSE=$(curl -s -m 10 -w "\n%{http_code}\n%{time_total}" \
+    "${OPENAI_BASE_URL:-https://api.openai.com}/v1/models" \
+    -H "Authorization: Bearer $OPENAI_API_KEY" 2>&1)
+PREFLIGHT_END=$(date +%s.%N)
+HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -2 | head -1)
+CURL_TIME=$(echo "$HEALTH_RESPONSE" | tail -1)
+log_diag "Pre-flight completed: HTTP $HTTP_CODE in ${CURL_TIME}s"
+
+if [[ "$HTTP_CODE" != "200" ]]; then
+    log_diag "WARNING: LLM endpoint returned HTTP $HTTP_CODE"
+    log_diag "Response: $(echo "$HEALTH_RESPONSE" | head -5)"
+fi
+
+# Function to add timestamps to each line
+timestamp_output() {
+    while IFS= read -r line; do
+        ELAPSED=$(echo "$(date +%s.%N) - $START_TIME" | bc)
+        printf "[%8.2fs] %s\n" "$ELAPSED" "$line"
+    done
+}
+
+log_diag "Starting mi agent..."
+echo "start=$(date +%s.%N)" > "$TIMING_LOG"
+
+# Run mi with timestamped output, separate stderr
+npx @avcodes/mi -p "$1" \
+    > >(timestamp_output | tee "$STDOUT_LOG") \
+    2> >(timestamp_output | tee "$STDERR_LOG" >&2)
+EXIT_CODE=$?
+
+echo "end=$(date +%s.%N)" >> "$TIMING_LOG"
+echo "exit_code=$EXIT_CODE" >> "$TIMING_LOG"
+
+END_TIME=$(date +%s.%N)
+TOTAL_TIME=$(echo "$END_TIME - $START_TIME" | bc)
+log_diag "MI agent finished with exit code $EXIT_CODE after ${TOTAL_TIME}s"
+log_diag "=== MI AGENT END ==="
+
+# Exit triggers the cleanup trap which runs post-mortem diagnostics
+exit $EXIT_CODE
+'''
+
+
+class MiAgent(BaseInstalledAgent):
+    """Harbor adapter for mi (https://github.com/av/mi).
+
+    Includes diagnostic instrumentation to debug failure modes:
+    - Pre-flight LLM connectivity check
+    - Timestamped output lines
+    - Separate stdout/stderr capture
+    - Post-mortem network diagnostics
+    """
+
+    SUPPORTS_ATIF: bool = False  # mi doesn't produce structured trajectory logs
+
+    @staticmethod
+    def name() -> str:
+        return "mi"
+
+    def get_version_command(self) -> str | None:
+        return "npx @avcodes/mi -h 2>&1 | head -1 || echo unknown"
+
+    def parse_version(self, stdout: str) -> str:
+        return stdout.strip() or "unknown"
+
+    async def install(self, environment: BaseEnvironment) -> None:
+        # Install Node.js and bc (for timestamp math) if not present
+        await self.exec_as_root(
+            environment,
+            command=(
+                "if command -v apk &> /dev/null; then"
+                "  apk add --no-cache nodejs npm bc curl iputils;"
+                " elif command -v apt-get &> /dev/null; then"
+                "  apt-get update && apt-get install -y nodejs npm bc curl iputils-ping;"
+                " elif command -v yum &> /dev/null; then"
+                "  yum install -y nodejs npm bc curl iputils;"
+                " fi"
+            ),
+            env={"DEBIAN_FRONTEND": "noninteractive"},
+        )
+
+        # Install mi globally, then patch with local index.mjs if available
+        version_spec = f"@{self._version}" if self._version else ""
+        await self.exec_as_agent(
+            environment,
+            command=f"npm install -g @avcodes/mi{version_spec} && npx @avcodes/mi -h",
+        )
+
+        # Overlay local index.mjs if running from repo (picks up unreleased fixes)
+        local_index = Path(__file__).parent.parent / "index.mjs"
+        if local_index.exists():
+            import base64
+            b64 = base64.b64encode(
+                local_index.read_text(encoding="utf-8").encode()
+            ).decode()
+            await self.exec_as_agent(
+                environment,
+                command=(
+                    "MI_DIR=$(npm root -g)/@avcodes/mi"
+                    f" && echo '{b64}' | base64 -d > \"$MI_DIR/index.mjs\""
+                ),
+            )
+
+    def populate_context_post_run(self, context: AgentContext) -> None:
+        # Read diagnostic logs for context
+        stdout_path = self.logs_dir / "mi-output.txt"
+        timing_path = self.logs_dir / "timing.txt"
+        diag_path = self.logs_dir / "diagnostics.txt"
+
+        if stdout_path.exists():
+            try:
+                content = stdout_path.read_text(encoding="utf-8")
+                context.n_output_tokens = len(content.split())
+            except OSError:
+                pass
+
+        # Log timing info if available
+        if timing_path.exists():
+            try:
+                timing = timing_path.read_text(encoding="utf-8")
+                # Parse timing file for metadata
+                context.metadata = context.metadata or {}
+                context.metadata["timing_raw"] = timing.strip()
+            except OSError:
+                pass
+
+        # Include diagnostics summary in metadata
+        if diag_path.exists():
+            try:
+                diag = diag_path.read_text(encoding="utf-8")
+                context.metadata = context.metadata or {}
+                context.metadata["diagnostics"] = diag[-2000:]  # Last 2KB
+            except OSError:
+                pass
+
+    @with_prompt_template
+    async def run(
+        self, instruction: str, environment: BaseEnvironment, context: AgentContext
+    ) -> None:
+        escaped_instruction = shlex.quote(instruction)
+
+        # Build environment for mi
+        env: dict[str, str] = {}
+
+        # mi uses OpenAI-compatible API
+        api_key = (
+            self._get_env("OPENAI_API_KEY")
+            or self._get_env("MI_API_KEY")
+            or ""
+        )
+        if api_key:
+            env["OPENAI_API_KEY"] = api_key
+
+        base_url = self._get_env("OPENAI_BASE_URL") or self._get_env("MI_BASE_URL")
+        if base_url:
+            # Rewrite localhost URLs for container access using Docker bridge gateway
+            base_url = base_url.replace("localhost", "172.17.0.1")
+            base_url = base_url.replace("127.0.0.1", "172.17.0.1")
+            env["OPENAI_BASE_URL"] = base_url
+
+        # Model selection: strip provider prefix if present
+        if self.model_name:
+            model = self.model_name
+            if "/" in model:
+                model = model.split("/", 1)[-1]
+            env["MODEL"] = model
+
+        # Optional: custom system prompt
+        system_prompt = self._get_env("MI_SYSTEM_PROMPT")
+        if system_prompt:
+            env["SYSTEM_PROMPT"] = system_prompt
+
+        if not env.get("OPENAI_API_KEY"):
+            raise RuntimeError(
+                "OPENAI_API_KEY or MI_API_KEY environment variable required for mi"
+            )
+
+        # Write diagnostic wrapper script to container
+        wrapper_path = "/tmp/mi-wrapper.sh"
+        await self.exec_as_agent(
+            environment,
+            command=f"cat > {wrapper_path} << 'WRAPPER_EOF'\n{DIAGNOSTIC_WRAPPER}\nWRAPPER_EOF\nchmod +x {wrapper_path}",
+            env=env,
+            cwd="/app",
+        )
+
+        # Run mi via diagnostic wrapper
+        await self.exec_as_agent(
+            environment,
+            command=f"bash {wrapper_path} {escaped_instruction}",
+            env=env,
+            cwd="/app",
+        )

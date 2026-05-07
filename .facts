@@ -1,0 +1,106 @@
+# project
+
+- label: all tests pass
+  command: npm test
+
+# package
+- label: package name is
+  command: grep -q '"name": "@avcodes/mi"' package.json
+  tags: [avcodes/mi]
+- label: ESM module (type: module in package.json)
+  command: grep -q '"type": "module"' package.json
+- label: bin entry maps 'mi' to ./index.mjs
+  command: node -e "const p=JSON.parse(require('fs').readFileSync('package.json'));process.exit(p.bin?.mi==='./index.mjs'?0:1)"
+- label: zero npm dependencies — Node builtins and native fetch only
+  command: node -e "const p=JSON.parse(require('fs').readFileSync('package.json'));process.exit(p.dependencies?1:0)"
+- label: published files are index.mjs, tools/, and skills/ only
+  command: node -e "const p=JSON.parse(require('fs').readFileSync('package.json'));const f=p.files;process.exit(f.length===3&&f.includes('index.mjs')&&f.includes('tools')&&f.includes('skills')?0:1)"
+- label: MIT license
+  command: grep -q '"license": "MIT"' package.json
+
+# architecture
+- core logic lives in index.mjs — every non-shebang line is intentionally dense
+- label: tools auto-discovered from tools/*.mjs via dynamic import()
+  command: test $(ls tools/*.mjs 2>/dev/null | wc -l) -ge 1
+- tool modules default-export { name, description, parameters, handler }
+- label: skills are markdown playbooks in skills/<name>/SKILL.md with YAML frontmatter
+  command: test -f skills/debug/SKILL.md && head -1 skills/debug/SKILL.md | grep -q '^---'
+- skills loaded from two search paths: bundled (MI_DIR/skills/) then user (~/.agents/skills/)
+- label: no build step, no transpilation, no lint config
+  command: ! test -f tsconfig.json && ! test -f .eslintrc.json && ! test -f webpack.config.js
+- Node builtins exposed globally for tool modules: spawn, readFileSync, existsSync, readdirSync, homedir
+
+# tools
+- label: exactly two tools: bash (shell execution) and skill (skill discovery/loading)
+  command: test $(ls tools/*.mjs | wc -l) -eq 2 && test -f tools/bash.mjs && test -f tools/skill.mjs
+- label: bash tool runs commands in detached process groups for clean signal handling
+  command: grep -q 'detached.*true' tools/bash.mjs
+- label: bash tool supports timeout (ms) and background (bg) modes
+  command: grep -q 'timeout' tools/bash.mjs && grep -q 'bg' tools/bash.mjs
+- label: background bash writes output to /tmp/mi-{timestamp}.log, returns pid and log path
+  command: grep -q '/tmp/mi-' tools/bash.mjs
+- skill tool without name lists all available skills; with name returns SKILL.md body
+- label: skill frontmatter parsed via regex (^name: and ^description: with multiline flag)
+  command: grep -q '/m' tools/skill.mjs
+
+# agent-loop
+- agent loop streams OpenAI chat completions via SSE, executes tool calls, repeats until text response
+- SSE parser buffers incomplete frames, splits on double-newline, skips [DONE] and malformed JSON
+- tool call fragments streamed by index — id/type overwrite, name/arguments append
+- label: tool output logged truncated to 200 chars; full result sent to model
+  command: grep -q '200' index.mjs
+- unknown tool calls return error listing available tools instead of crashing
+
+# cli
+- four CLI modes: interactive REPL, one-shot (-p), stdin pipe, and file context (-f)
+- /reset command splices history to keep only system prompt
+- REPL error recovery pops failed user message so model never sees it
+- version banner prints '◰ mi/<version>' in orange and gray ANSI
+- label: ANSI color helpers: gray (90), red (31), orange (38;5;208)
+  command: grep -q '208' index.mjs
+
+# system-prompt
+- system prompt = SYSTEM_PROMPT env (full override) or built-in DEFAULT_PROMPT
+- system message appends: CWD, ISO date, -f file content, AGENTS.md (if present), skill summaries
+- label: AGENTS.md auto-ingested from CWD and appended to system prompt
+  command: grep -q 'AGENTS.md' index.mjs
+
+# env
+- label: default model is gpt-5.4 (MODEL env var)
+  command: grep -q 'gpt-5.4' index.mjs
+- label: default API base is https://api.openai.com (OPENAI_BASE_URL env var)
+  command: grep -q 'api.openai.com' index.mjs
+- OPENAI_API_KEY required for all modes except -h
+- MI_DIR and MI_PATH set in process.env for tools/skills to locate package assets
+
+# skills
+- label: 11 bundled skills: debug, delegate, explore, new-skill, plan, refactor, review, self, tasks, tdd, verify
+  command: test $(ls -d skills/*/SKILL.md 2>/dev/null | wc -l) -eq 11
+- label: user skills live in ~/.agents/skills/ and are merged with bundled skills
+  command: test -d skills/debug
+
+# testing
+- label: test suite uses node --test with mocked OpenAI-compatible HTTP server
+  command: grep -q 'node --test' package.json
+- tests cover: CLI modes, SSE streaming, tool calls, REPL reset, error recovery, SIGINT, AGENTS.md, skills, Unicode
+- label: npm run lines counts meaningful LOC in index.mjs and tools/*.mjs — target is 30 total
+  command: grep -q 'count-lines' package.json
+- label: count-lines.mjs is language-aware: strips comments and blank lines for JS, Python, and Shell
+  command: test -f scripts/count-lines.mjs
+- label: auxiliary tests: test_exit.js (exit codes) and test_sigint.cjs (signal handling) — not in npm test
+  command: test -f tests/test_exit.js && test -f tests/test_sigint.cjs
+
+# publishing
+- label: publishing triggered by GitHub Release or workflow_dispatch
+  command: test -f .github/workflows/publish.yml
+- label: uses OIDC tokenless publish with provenance — no NPM_TOKEN secret
+  command: grep -q 'provenance' .github/workflows/publish.yml
+- label: CI requires Node 24.x
+  command: grep -q '24' .github/workflows/publish.yml
+
+# harbor
+- label: mi_harbor/ is a Python adapter for running mi against Harbor benchmarks (Terminal-Bench 2.0)
+  command: test -f mi_harbor/mi_agent.py
+- harbor adapter includes diagnostic instrumentation: pre-flight LLM check, timestamped output, network diagnostics
+- label: harbor is dev/eval infrastructure only — excluded from npm package
+  command: grep -q 'mi_harbor' .npmignore
