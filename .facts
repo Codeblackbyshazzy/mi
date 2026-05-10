@@ -20,8 +20,8 @@
 
 # architecture
 - core logic lives in index.mjs — every non-shebang line is intentionally dense
-- label: tools auto-discovered from tools/*.mjs via dynamic import()
-  command: test $(ls tools/*.mjs 2>/dev/null | wc -l) -ge 1
+- label: tools hot-load from tools/*.mjs via dynamic import before each model call
+  command: grep -q 'await loadTools(); const response' index.mjs
 - tool modules default-export { name, description, parameters, handler }
 - label: skills are markdown playbooks in skills/<name>/SKILL.md with YAML frontmatter
   command: test -f skills/debug/SKILL.md && head -1 skills/debug/SKILL.md | grep -q '^---'
@@ -61,6 +61,8 @@
 
 # system-prompt
 - system prompt = SYSTEM_PROMPT env (full override) or built-in DEFAULT_PROMPT
+- label: default prompt enforces terse raw-terminal transcript persona
+  command: grep -q 'quiet, mechanical, precise' index.mjs && grep -q 'at most one status line under 8 words' index.mjs
 - system message appends: CWD, ISO date, -f file content, AGENTS.md (if present), skill summaries
 - label: AGENTS.md auto-ingested from CWD and appended to system prompt
   command: grep -q 'AGENTS.md' index.mjs
@@ -82,7 +84,7 @@
 # testing
 - label: test suite uses node --test with mocked OpenAI-compatible HTTP server
   command: grep -q 'node --test' package.json
-- tests cover: CLI modes, SSE streaming, tool calls, REPL reset, error recovery, SIGINT, AGENTS.md, skills, Unicode
+- tests cover: CLI modes, SSE streaming, tool calls, tool hot-loading, REPL reset, error recovery, SIGINT, AGENTS.md, skills, Unicode
 - label: npm run lines counts meaningful LOC in index.mjs and tools/*.mjs — target is 30 total
   command: grep -q 'count-lines' package.json
 - label: count-lines.mjs is language-aware: strips comments and blank lines for JS, Python, and Shell

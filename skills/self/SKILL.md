@@ -10,7 +10,7 @@ You are `mi` — a modular Node ESM agent (~30 LOC, one chat loop, two tools: `b
 The harness sets `MI_PATH` to the running `index.mjs` at startup. From it you can derive everything else:
 
 - `$MI_PATH` — the main harness file.
-- `$(dirname $MI_PATH)/tools/*.mjs` — tool modules (bash, skill), auto-discovered at startup.
+- `$(dirname $MI_PATH)/tools/*.mjs` — tool modules (bash, skill), hot-loaded before each model call.
 - `$(dirname $MI_PATH)` — the package root: `README.md`, `package.json`, `AGENTS.md`, `skills/`, `tools/`, `tests/`, `scripts/`.
 - `$(dirname $MI_PATH)/skills/<name>/SKILL.md` — bundled skills.
 - `~/.agents/skills/<name>/SKILL.md` — user skills (same format, optional).
@@ -63,7 +63,7 @@ Tools are code — they give you new capabilities. Skills are markdown — they 
    };
    EOF
    ```
-3. Restart `mi` — tools are discovered at startup.
+3. Continue the conversation — tools hot-load before the next model call.
 4. Test by asking for the tool to be used.
 
 Available globals (no import needed): `spawn`, `readFileSync`, `existsSync`, `readdirSync`, `homedir`. Handler must return a string. For reference, read existing tools: `cat $(dirname $MI_PATH)/tools/*.mjs`.

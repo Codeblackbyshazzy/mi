@@ -5,7 +5,7 @@
 ESM CLI: core logic in `index.mjs`, tools in `tools/*.mjs`, skills in `skills/<name>/SKILL.md`.
 No build step, no transpilation, no lint config.
 
-Tool modules are auto-discovered from `tools/*.mjs` and must default-export `{ name, description, parameters, handler }`.
+Tool modules hot-load from `tools/*.mjs` before each model call and must default-export `{ name, description, parameters, handler }`.
 Bundled skills and user skills are loaded through the `skill` tool from `skills/` and `~/.agents/skills/`.
 
 `scripts/count-lines.mjs` is a dev utility — not part of the published package (`files` in `package.json` is `index.mjs`, `tools/`, and `skills/`).
@@ -27,7 +27,7 @@ npm test       # node --test tests/test.js; mocked OpenAI-compatible HTTP API
 npm run lines  # count meaningful LOC in index.mjs and tools/*.mjs
 ```
 
-The test suite is real and should be kept green. It covers CLI modes, streaming SSE, tool calls, REPL reset/error recovery, stdin, `-f`, env vars, `AGENTS.md` ingestion, skill loading, bash timeout/background mode, SIGINT cleanup, malformed API responses, and Unicode cases.
+The test suite is real and should be kept green. It covers CLI modes, streaming SSE, tool calls, tool hot-loading, REPL reset/error recovery, stdin, `-f`, env vars, `AGENTS.md` ingestion, skill loading, bash timeout/background mode, SIGINT cleanup, malformed API responses, and Unicode cases.
 
 `tests/integration.md` documents the test plan. `tests/test_exit.js` and `tests/test_sigint.cjs` are auxiliary/manual exit/SIGINT checks, not part of the default `npm test` script.
 

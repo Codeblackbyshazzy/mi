@@ -183,6 +183,9 @@ test('context gathering', async () => {
     const sysMsg = body.messages[0].content;
     assert.match(sysMsg, /CWD: /);
     assert.match(sysMsg, /Date: /);
+    assert.match(sysMsg, /quiet, mechanical, precise/);
+    assert.match(sysMsg, /Before a tool call, write at most one status line under 8 words/);
+    assert.match(sysMsg, /hot-load before the next model call/);
     sse(res, { role: 'assistant', content: 'context checked' });
   };
 
@@ -190,6 +193,51 @@ test('context gathering', async () => {
   assert.strictEqual(result.status, 0);
   assert.match(result.stdout, /context checked/);
 });
+
+test('tool modules hot-load before the next model call', async () => {
+  const hotTool = join(__dirname, '..', 'tools', 'hot_test.mjs');
+  if (existsSync(hotTool)) unlinkSync(hotTool);
+
+  let callCount = 0;
+  requestHandler = (req, res, body) => {
+    callCount++;
+    if (callCount === 1) {
+      assert.ok(!body.tools.some(t => t.function.name === 'hot_test'));
+      sse(res, {
+        role: 'assistant',
+        tool_calls: [{
+          id: 'call_write_tool',
+          type: 'function',
+          function: { name: 'bash', arguments: JSON.stringify({ command: "cat > tools/hot_test.mjs <<'EOF'\nexport default { name: 'hot_test', description: 'hot loaded test tool', parameters: { type: 'object', properties: { value: { type: 'string' } }, required: ['value'] }, handler: ({value}) => `hot:${value}` };\nEOF" }) }
+        }]
+      });
+    } else if (callCount === 2) {
+      assert.ok(body.tools.some(t => t.function.name === 'hot_test'));
+      sse(res, {
+        role: 'assistant',
+        tool_calls: [{
+          id: 'call_hot_tool',
+          type: 'function',
+          function: { name: 'hot_test', arguments: JSON.stringify({ value: 'abc' }) }
+        }]
+      });
+    } else {
+      const lastMsg = body.messages[body.messages.length - 1];
+      assert.strictEqual(lastMsg.role, 'tool');
+      assert.strictEqual(lastMsg.content, 'hot:abc');
+      sse(res, { role: 'assistant', content: 'hot load done' });
+    }
+  };
+
+  try {
+    const result = await runMi(['-p', 'write and use a new tool']);
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /hot load done/);
+  } finally {
+    if (existsSync(hotTool)) unlinkSync(hotTool);
+  }
+});
+
 test('-f <filepath> flag', async () => {
   const testFile = join(__dirname, 'test_file_flag.txt');
   writeFileSync(testFile, 'file_flag_content_xyz');
