@@ -62,6 +62,7 @@ function runMi(args, env = {}, input = '') {
         ...process.env,
         OPENAI_BASE_URL: serverUrl,
         OPENAI_API_KEY: 'test-key',
+        MI_HOME: '/tmp/.mi-test-no-home',
         http_proxy: '',
         https_proxy: '',
         HTTP_PROXY: '',
@@ -116,6 +117,7 @@ function spawnRepl(env = {}) {
       ...process.env,
       OPENAI_BASE_URL: serverUrl,
       OPENAI_API_KEY: 'test-key',
+      MI_HOME: '/tmp/.mi-test-no-home',
       http_proxy: '',
       https_proxy: '',
       HTTP_PROXY: '',
@@ -309,21 +311,23 @@ test('AGENTS.md context', async () => {
   const oldContent = existsSync(agentsFile) ? readFileSync(agentsFile, 'utf8') : null;
   writeFileSync(agentsFile, 'agents_md_content_789');
 
-  requestHandler = (req, res, body) => {
-    const sysMsg = body.messages[0].content;
-    assert.match(sysMsg, /agents_md_content_789/);
-    sse(res, { role: 'assistant', content: 'agents context checked' });
-  };
+  try {
+    requestHandler = (req, res, body) => {
+      const sysMsg = body.messages[0].content;
+      assert.match(sysMsg, /agents_md_content_789/);
+      sse(res, { role: 'assistant', content: 'agents context checked' });
+    };
 
-  const result = await runMi(['-p', 'check agents context']);
-  if (result.status !== 0) console.error('AGENTS stderr:', result.stderr);
-  assert.strictEqual(result.status, 0);
-  assert.match(result.stdout, /agents context checked/);
-
-  if (oldContent !== null) {
-    writeFileSync(agentsFile, oldContent);
-  } else {
-    unlinkSync(agentsFile);
+    const result = await runMi(['-p', 'check agents context']);
+    if (result.status !== 0) console.error('AGENTS stderr:', result.stderr);
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /agents context checked/);
+  } finally {
+    if (oldContent !== null) {
+      writeFileSync(agentsFile, oldContent);
+    } else {
+      unlinkSync(agentsFile);
+    }
   }
 });
 
@@ -621,6 +625,7 @@ test('clean ctrl-c and subprocess cleanup', async () => {
       ...process.env,
       OPENAI_BASE_URL: serverUrl,
       OPENAI_API_KEY: 'test-key',
+      MI_HOME: '/tmp/.mi-test-no-home',
       http_proxy: '',
       https_proxy: '',
       HTTP_PROXY: '',
@@ -741,7 +746,8 @@ test('-h help flag', async () => {
       env: {
         ...process.env,
         OPENAI_API_KEY: undefined,  // Explicitly unset
-        OPENAI_BASE_URL: undefined
+        OPENAI_BASE_URL: undefined,
+        MI_HOME: '/tmp/.mi-test-no-home'
       }
     });
 
@@ -811,7 +817,8 @@ test('missing OPENAI_API_KEY exits with error', async () => {
       env: {
         ...process.env,
         OPENAI_API_KEY: undefined,  // Explicitly unset
-        OPENAI_BASE_URL: undefined
+        OPENAI_BASE_URL: undefined,
+        MI_HOME: '/tmp/.mi-test-no-home'  // Skip ~/.mirc so it can't fill in the key
       }
     });
 
@@ -1537,39 +1544,39 @@ test('skill tool: whitespace-only SKILL.md file loads as whitespace', async () =
   }
 });
 
-test('~/.mirc config file sets env var defaults', async () => {
-  const mockHome = join(__dirname, 'mock_home_mirc');
+test('~/.mi/config.json sets env var defaults', async () => {
+  const mockHome = join(__dirname, 'mock_mi_home');
   mkdirSync(mockHome, { recursive: true });
-  writeFileSync(join(mockHome, '.mirc'), JSON.stringify({ MODEL: 'mirc-model-test' }));
+  writeFileSync(join(mockHome, 'config.json'), JSON.stringify({ MODEL: 'config-model-test' }));
 
   requestHandler = (req, res, body) => {
-    assert.strictEqual(body.model, 'mirc-model-test');
-    sse(res, { role: 'assistant', content: 'mirc config ok' });
+    assert.strictEqual(body.model, 'config-model-test');
+    sse(res, { role: 'assistant', content: 'config ok' });
   };
 
   try {
-    const result = await runMi(['-p', 'check mirc'], { HOME: mockHome });
+    const result = await runMi(['-p', 'check config'], { MI_HOME: mockHome });
     assert.strictEqual(result.status, 0);
-    assert.match(result.stdout, /mirc config ok/);
+    assert.match(result.stdout, /config ok/);
   } finally {
     rmSync(mockHome, { recursive: true, force: true });
   }
 });
 
-test('env vars override ~/.mirc config', async () => {
-  const mockHome = join(__dirname, 'mock_home_mirc_override');
+test('env vars override ~/.mi/config.json', async () => {
+  const mockHome = join(__dirname, 'mock_mi_home_override');
   mkdirSync(mockHome, { recursive: true });
-  writeFileSync(join(mockHome, '.mirc'), JSON.stringify({ MODEL: 'mirc-should-lose' }));
+  writeFileSync(join(mockHome, 'config.json'), JSON.stringify({ MODEL: 'config-should-lose' }));
 
   requestHandler = (req, res, body) => {
     assert.strictEqual(body.model, 'env-should-win');
-    sse(res, { role: 'assistant', content: 'mirc override ok' });
+    sse(res, { role: 'assistant', content: 'config override ok' });
   };
 
   try {
-    const result = await runMi(['-p', 'check override'], { HOME: mockHome, MODEL: 'env-should-win' });
+    const result = await runMi(['-p', 'check override'], { MI_HOME: mockHome, MODEL: 'env-should-win' });
     assert.strictEqual(result.status, 0);
-    assert.match(result.stdout, /mirc override ok/);
+    assert.match(result.stdout, /config override ok/);
   } finally {
     rmSync(mockHome, { recursive: true, force: true });
   }

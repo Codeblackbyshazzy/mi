@@ -18,7 +18,7 @@ agentic coding in 30 loc. a loop, two tools, and an llm.
 - chat REPL with `/reset` command and error recovery
 - streaming output (SSE) — tokens appear as they arrive
 - graceful `SIGINT` handling for bash child processes
-- optional `~/.mirc` JSON config file (env vars always override)
+- optional `~/.mi/config.json` config file (env vars always override)
 
 ## install
 
@@ -52,7 +52,7 @@ MODEL=qwen3.5:4b OPENAI_BASE_URL=http://localhost:33821 mi
 
 ## config
 
-`~/.mirc` is an optional JSON config file. keys become env var defaults — your shell env always wins.
+`~/.mi/config.json` is an optional JSON config file. keys become env var defaults — your shell env always wins.
 
 ```json
 {
@@ -62,7 +62,7 @@ MODEL=qwen3.5:4b OPENAI_BASE_URL=http://localhost:33821 mi
 }
 ```
 
-any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BASE_URL`, `REASONING_EFFORT`, `SYSTEM_PROMPT`.
+any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BASE_URL`, `REASONING_EFFORT`, `SYSTEM_PROMPT`. the config directory can be overridden with `MI_HOME`.
 
 ## env
 
@@ -73,6 +73,7 @@ any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BA
 | `MODEL` | `gpt-5.4` | model name |
 | `REASONING_EFFORT` | (unset) | optional reasoning effort for compatible models (`minimal`, `low`, `medium`, `high`) |
 | `SYSTEM_PROMPT` | built-in agent prompt | override the system prompt entirely |
+| `MI_HOME` | `~/.mi` | config directory (reads `config.json`) |
 
 ## deep dive
 

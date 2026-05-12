@@ -87,7 +87,7 @@
 - label: test suite uses node --test with mocked OpenAI-compatible HTTP server
   command: grep -q 'node --test' package.json
 - tests cover: CLI modes, SSE streaming, tool calls, tool hot-loading, REPL reset, error recovery, SIGINT, AGENTS.md, skills, Unicode
-- label: npm run lines counts meaningful LOC in index.mjs and tools/*.mjs — target is 30 total
+- label: npm run lines counts meaningful LOC in index.mjs only — target is 30
   command: grep -q 'count-lines' package.json
 - label: count-lines.mjs is language-aware: strips comments and blank lines for JS, Python, and Shell
   command: test -f scripts/count-lines.mjs
