@@ -6,7 +6,7 @@
 import { createInterface } from 'readline'; import { readFileSync, existsSync, readdirSync } from 'fs'; import { spawn } from 'child_process'; import { homedir } from 'os';
 // Globals: tools run in a separate module scope but need fs/spawn — expose via global rather than re-importing.
 // DIR = package root (for tool/skill discovery); MI_DIR/MI_PATH = env vars so tools can locate project assets.
-Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname }); if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
+Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname }); const rc = `${homedir()}/.mirc`; if (existsSync(rc)) Object.entries(JSON.parse(readFileSync(rc, 'utf8'))).forEach(([k, v]) => process.env[k] ||= v); if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
 
 // ── Tool discovery ───────────────────────────────────────────────────
 // Load tool modules; each exports {name, description, parameters, handler}.

@@ -18,6 +18,7 @@ agentic coding in 30 loc. a loop, two tools, and an llm.
 - chat REPL with `/reset` command and error recovery
 - streaming output (SSE) — tokens appear as they arrive
 - graceful `SIGINT` handling for bash child processes
+- optional `~/.mirc` JSON config file (env vars always override)
 
 ## install
 
@@ -48,6 +49,20 @@ echo "write a python script that prints hello world" | mi
 # local models via any openai-compatible api
 MODEL=qwen3.5:4b OPENAI_BASE_URL=http://localhost:33821 mi
 ```
+
+## config
+
+`~/.mirc` is an optional JSON config file. keys become env var defaults — your shell env always wins.
+
+```json
+{
+  "MODEL": "o3",
+  "OPENAI_BASE_URL": "http://localhost:11434",
+  "REASONING_EFFORT": "high"
+}
+```
+
+any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BASE_URL`, `REASONING_EFFORT`, `SYSTEM_PROMPT`.
 
 ## env
 

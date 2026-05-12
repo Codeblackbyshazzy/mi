@@ -1537,6 +1537,44 @@ test('skill tool: whitespace-only SKILL.md file loads as whitespace', async () =
   }
 });
 
+test('~/.mirc config file sets env var defaults', async () => {
+  const mockHome = join(__dirname, 'mock_home_mirc');
+  mkdirSync(mockHome, { recursive: true });
+  writeFileSync(join(mockHome, '.mirc'), JSON.stringify({ MODEL: 'mirc-model-test' }));
+
+  requestHandler = (req, res, body) => {
+    assert.strictEqual(body.model, 'mirc-model-test');
+    sse(res, { role: 'assistant', content: 'mirc config ok' });
+  };
+
+  try {
+    const result = await runMi(['-p', 'check mirc'], { HOME: mockHome });
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /mirc config ok/);
+  } finally {
+    rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
+test('env vars override ~/.mirc config', async () => {
+  const mockHome = join(__dirname, 'mock_home_mirc_override');
+  mkdirSync(mockHome, { recursive: true });
+  writeFileSync(join(mockHome, '.mirc'), JSON.stringify({ MODEL: 'mirc-should-lose' }));
+
+  requestHandler = (req, res, body) => {
+    assert.strictEqual(body.model, 'env-should-win');
+    sse(res, { role: 'assistant', content: 'mirc override ok' });
+  };
+
+  try {
+    const result = await runMi(['-p', 'check override'], { HOME: mockHome, MODEL: 'env-should-win' });
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /mirc override ok/);
+  } finally {
+    rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
 test('very long input in one-shot mode (10KB+)', async () => {
   // Test that very long prompt text (10KB+) is handled correctly without buffer/memory issues
   // This exercises the full path: argument parsing -> message construction -> fetch body serialization
