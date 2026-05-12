@@ -6,7 +6,7 @@
 import { createInterface } from 'readline'; import { readFileSync, existsSync, readdirSync } from 'fs'; import { spawn } from 'child_process'; import { homedir } from 'os';
 // Globals: tools run in a separate module scope but need fs/spawn — expose via global rather than re-importing.
 // DIR = package root (for tool/skill discovery); MI_DIR/MI_PATH = env vars so tools can locate project assets.
-Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname }); const rc = `${homedir()}/.mirc`; if (existsSync(rc)) Object.entries(JSON.parse(readFileSync(rc, 'utf8'))).forEach(([k, v]) => process.env[k] ||= v); if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
+Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname }); const rc = `${homedir()}/.mirc`; if (existsSync(rc)) Object.entries(JSON.parse(readFileSync(rc, 'utf8'))).forEach(([k, v]) => process.env[k] ||= v); if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h') && !process.argv.includes('--help')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
 
 // ── Tool discovery ───────────────────────────────────────────────────
 // Load tool modules; each exports {name, description, parameters, handler}.
@@ -52,7 +52,7 @@ const SYSTEM = (process.env.SYSTEM_PROMPT || DEFAULT_PROMPT) + `\nCWD: ${process
 // Uses short-circuit: indexOf returns -1 when missing, so `i >= 0 && argv[i + 1]` is false without a flag.
 const history = [{ role: 'system', content: SYSTEM }], getArg = key => { const i = process.argv.indexOf(key); return i >= 0 && process.argv[i + 1]; };
 
-if (process.argv.includes('-h')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, REASONING_EFFORT, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
+if (process.argv.includes('-h') || process.argv.includes('--help')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, REASONING_EFFORT, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
 
 // Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message.
 const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n${readFileSync(fileArg, 'utf8')}`; if (existsSync('AGENTS.md')) sysMsg.content += `\n${readFileSync('AGENTS.md', 'utf8')}`; const skills = listSkills(); if (skills.length) sysMsg.content += `\n\nSkill descriptions:\n${skills.join('\n')}`;
