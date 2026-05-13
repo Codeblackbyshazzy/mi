@@ -1,0 +1,10 @@
+node_modules
+tests
+scripts
+mi_harbor
+assets
+.github
+.claude
+.ruff_cache
+.git
+*.md
