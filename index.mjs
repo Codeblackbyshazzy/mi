@@ -3,12 +3,12 @@
 
 // ── Imports & environment ────────────────────────────────────────────
 // Node builtins only — no npm deps. These four cover REPL, filesystem, subprocesses, and home directory.
-import { createInterface } from 'readline'; import { readFileSync, existsSync, readdirSync } from 'fs'; import { spawn } from 'child_process'; import { homedir } from 'os';
+import { createInterface } from 'readline'; import { readFileSync, existsSync, readdirSync } from 'fs'; import { spawn, execFileSync } from 'child_process'; import { homedir } from 'os';
 // Globals: tools run in a separate module scope but need fs/spawn — expose via global rather than re-importing.
 // DIR = package root (for tool/skill discovery); MI_DIR/MI_PATH = env vars so tools can locate project assets.
 Object.assign(global, { spawn, readFileSync, existsSync, readdirSync, homedir }); const DIR = new URL('.', import.meta.url).pathname; Object.assign(process.env, { MI_DIR: DIR, MI_PATH: new URL(import.meta.url).pathname });
 const MI_HOME = process.env.MI_HOME || `${homedir()}/.mi`, rc = `${MI_HOME}/config.json`; if (existsSync(rc)) Object.entries(JSON.parse(readFileSync(rc, 'utf8'))).forEach(([k, v]) => process.env[k] ||= v);
-if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h') && !process.argv.includes('--help')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
+if (process.argv.includes('--sandbox') || process.env.MI_SANDBOX) { const img = process.env.MI_IMAGE || 'ghcr.io/av/mi:latest', args = process.argv.slice(2).filter(a => a !== '--sandbox'), da = ['run', '--rm', process.stdin.isTTY ? '-it' : '-i', '--network=host', '-v', `${process.cwd()}:/work`, '-w', '/work']; if (existsSync(rc)) da.push('-v', `${rc}:/home/mi/.mi/config.json:ro`); da.push(img, ...args); try { execFileSync('docker', da, { stdio: 'inherit' }); } catch (e) { process.exit(e.status || 1); } process.exit(0); } if (!process.env.OPENAI_API_KEY && !process.argv.includes('-h') && !process.argv.includes('--help')) { console.error('OPENAI_API_KEY required'); process.exit(1); }
 
 // ── Tool discovery ───────────────────────────────────────────────────
 // Load tool modules; each exports {name, description, parameters, handler}.
@@ -57,7 +57,7 @@ const SYSTEM = (process.env.SYSTEM_PROMPT || DEFAULT_PROMPT) + `\nCWD: ${process
 const history = [{ role: 'system', content: SYSTEM }];
 const getArg = key => { const i = process.argv.indexOf(key); return i >= 0 && process.argv[i + 1]; };
 
-if (process.argv.includes('-h') || process.argv.includes('--help')) { console.log('usage: mi [-p prompt] [-f file] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, REASONING_EFFORT, SYSTEM_PROMPT\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
+if (process.argv.includes('-h') || process.argv.includes('--help')) { console.log('usage: mi [-p prompt] [-f file] [--sandbox] [-h]\n  pipe: echo "..." | mi    repl: /reset clears history    --sandbox: run in Docker\nenv: OPENAI_API_KEY, MODEL, OPENAI_BASE_URL, REASONING_EFFORT, SYSTEM_PROMPT, MI_IMAGE\nbash tool args: timeout=<ms> kills after delay · bg=truthy detaches and returns pid+log'); process.exit(0); }
 
 // Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message.
 const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n${readFileSync(fileArg, 'utf8')}`;

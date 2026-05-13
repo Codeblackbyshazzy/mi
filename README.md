@@ -21,6 +21,7 @@ agentic coding in 30 loc. a loop, two tools, and an llm.
 - streaming output (SSE) — tokens appear as they arrive
 - graceful `SIGINT` handling for bash child processes
 - optional `~/.mi/config.json` config file (env vars always override)
+- `--sandbox` mode: run inside a Docker container with PWD mounted — safe for destructive experiments
 
 ## install
 
@@ -31,6 +32,9 @@ npx @avcodes/mi
 # or install globally
 npm i -g @avcodes/mi
 mi
+
+# or run via docker
+docker run --rm -it -e OPENAI_API_KEY ghcr.io/av/mi
 ```
 
 ## usage
@@ -50,6 +54,13 @@ echo "write a python script that prints hello world" | mi
 
 # local models via any openai-compatible api
 MODEL=qwen3.5:4b OPENAI_BASE_URL=http://localhost:33821 mi
+
+# sandbox mode: run in a docker container with current dir mounted
+mi --sandbox -p 'rm -rf node_modules && reinstall everything'
+
+# or always run sandboxed via env var
+export MI_SANDBOX=1
+mi
 ```
 
 ## config
@@ -76,6 +87,8 @@ any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BA
 | `REASONING_EFFORT` | (unset) | optional reasoning effort for compatible models (`minimal`, `low`, `medium`, `high`) |
 | `SYSTEM_PROMPT` | built-in agent prompt | override the system prompt entirely |
 | `MI_HOME` | `~/.mi` | config directory (reads `config.json`) |
+| `MI_SANDBOX` | (unset) | truthy = always run in Docker container |
+| `MI_IMAGE` | `ghcr.io/av/mi:latest` | docker image for sandbox mode |
 
 ## deep dive
 
