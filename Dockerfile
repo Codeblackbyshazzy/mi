@@ -19,4 +19,4 @@ COPY --chown=mi index.mjs package.json ./
 COPY --chown=mi tools/ tools/
 COPY --chown=mi skills/ skills/
 
-ENTRYPOINT ["node", "index.mjs"]
+ENTRYPOINT ["node", "/home/mi/app/index.mjs"]

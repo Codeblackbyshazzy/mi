@@ -3,24 +3,52 @@ name: self
 description: Answer questions about how 'mi' works, write new tools, or modify the harness. Use for "how do you work", "write a tool", "add a tool", "create a tool", "extend yourself", "edit yourself", "what tools do you have", or any introspection/modification of the running agent.
 ---
 
-You are `mi` — a modular Node ESM agent (~30 LOC, one chat loop, two tools: `bash` and `skill`). To answer questions about yourself, read the source rather than recall — it's small enough to read whole in one shot, and it's the ground truth.
+You are `mi` — a modular Node ESM agent (~30 LOC, one chat loop, four tools: `bash`, `delegate`, `goal`, and `skill`). To answer questions about yourself, read the source rather than recall — it's small enough to read whole in one shot, and it's the ground truth.
 
 ## Where things live
 
 The harness sets `MI_PATH` to the running `index.mjs` at startup. From it you can derive everything else:
 
 - `$MI_PATH` — the main harness file.
-- `$(dirname $MI_PATH)/tools/*.mjs` — tool modules (bash, skill), hot-loaded before each model call.
+- `$(dirname $MI_PATH)/tools/*.mjs` — tool modules (bash, delegate, goal, skill), hot-loaded before each model call.
 - `$(dirname $MI_PATH)` — the package root: `README.md`, `package.json`, `AGENTS.md`, `skills/`, `tools/`, `tests/`, `scripts/`.
 - `$(dirname $MI_PATH)/skills/<name>/SKILL.md` — bundled skills.
 - `~/.agents/skills/<name>/SKILL.md` — user skills (same format, optional).
 - `$PWD/AGENTS.md` — auto-appended to your system prompt at startup, when present. It's the per-repo context channel.
+- `$MI_HOME/config.json` (default `~/.mi/config.json`) — optional JSON config file, loaded at startup.
+
+## Config
+
+`~/.mi/config.json` is an optional JSON file. Each key becomes an env var default — the shell environment always takes precedence. The config directory can be relocated via `MI_HOME`.
+
+```json
+{
+  "MODEL": "o3",
+  "OPENAI_BASE_URL": "http://localhost:11434",
+  "REASONING_EFFORT": "high"
+}
+```
+
+Any env var that mi reads can be set here. To inspect the active config: `cat ${MI_HOME:-~/.mi}/config.json 2>/dev/null || echo '(no config file)'`.
+
+### Env vars
+
+| var | default | what |
+|-----|---------|------|
+| `OPENAI_API_KEY` | (none) | API key (required) |
+| `OPENAI_BASE_URL` | `https://api.openai.com` | API base URL (ollama, lmstudio, litellm, etc) |
+| `MODEL` | `gpt-5.4` | model name |
+| `REASONING_EFFORT` | (unset) | reasoning effort for compatible models |
+| `SYSTEM_PROMPT` | built-in | fully overrides the default system prompt |
+| `MI_HOME` | `~/.mi` | config directory (reads `config.json` from here) |
+| `MI_SANDBOX` | (unset) | truthy = always run in Docker |
+| `MI_IMAGE` | `ghcr.io/av/mi:latest` | Docker image for sandbox mode |
 
 ## How you run
 
-- `mi` (REPL) · `mi -p '<prompt>'` (one-shot) · `mi -f <file>` (prepend file to system) · `mi -h` (help). Stdin pipes work: `echo ... | mi`.
+- `mi` (REPL) · `mi -p '<prompt>'` (one-shot) · `mi -f <file>` (prepend file to system) · `mi --sandbox` (run in Docker) · `mi -v` (version) · `mi -h` (help). Stdin pipes work: `echo ... | mi`.
 - REPL command: `/reset` clears history (keeps system prompt).
-- Env: `OPENAI_API_KEY` (required), `MODEL` (default `gpt-5.4`), `OPENAI_BASE_URL` (default `https://api.openai.com`), `SYSTEM_PROMPT` (fully overrides built-in instructions; CWD/Date and skill descriptions still get appended).
+- Env vars and config: see the **Config** section above.
 
 ## Procedure
 
