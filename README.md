@@ -8,20 +8,20 @@ agentic coding in 30 loc. a loop, two tools, and an llm.
 - `bash` tool gives full system access: git, curl, compilers, file I/O (`cat`, `sed -i`, heredocs); optional `timeout=<ms>` and `bg=truthy` for background tasks
 - `delegate` tool spawns a mi subagent with a prompt — runs in the same directory, same API, streams output in real-time; optional `timeout=<ms>`
 - `goal` tool pursues a high-level goal by iterating subagents until a bash check command exits 0 — uses a progress file so iterations build on prior work (up to 128 by default)
+- recursive agents: `delegate` and `goal` tools spawn sub-agents natively; any tool can also call `mi` as a child process
+- self-extending: agent can write its own tools via the `self` skill
 - `skill` tool loads markdown playbooks from `skills/` and `~/.agents/skills/` (auto-advertised in system prompt)
 - bundled skills: `plan`, `tasks`, `delegate`, `explore`, `refactor`, `review`, `verify`, `debug`, `tdd`, `new-skill`, `self`
 - modular tools: add new tools by dropping `.mjs` files in `tools/` (hot-loaded before each model call)
-- self-extending: agent can write its own tools via the `self` skill
-- recursive agents: `delegate` and `goal` tools spawn sub-agents natively; any tool can also call `mi` as a child process
+- `--sandbox` mode: run inside a Docker container with PWD mounted — safe for destructive experiments. image ships with node, python, uv, git, GNU coreutils/grep/sed/awk/find, curl, jq, ssh, rsync, vim, less, procps, util-linux, bind-tools (dig), iputils (ping), tree
 - automatic `AGENTS.md` ingestion from current directory for repo-specific context
+- chat REPL with `/reset` command and error recovery
 - non-interactive mode with `-p 'prompt'` for scripting and CI
 - stdin pipes: `echo "do this" | mi` or `cat file | mi`
 - file context via `-f <file>` argument
-- chat REPL with `/reset` command and error recovery
 - streaming output (SSE) — tokens appear as they arrive
 - graceful `SIGINT` handling for bash child processes
 - optional `~/.mi/config.json` config file (env vars always override)
-- `--sandbox` mode: run inside a Docker container with PWD mounted — safe for destructive experiments
 
 ## install
 
