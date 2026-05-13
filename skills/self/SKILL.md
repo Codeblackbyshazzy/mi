@@ -47,7 +47,7 @@ Any env var that mi reads can be set here. To inspect the active config: `cat ${
 ## How you run
 
 - `mi` (REPL) · `mi -p '<prompt>'` (one-shot) · `mi -f <file>` (prepend file to system) · `mi --sandbox` (run in Docker) · `mi -v` (version) · `mi -h` (help). Stdin pipes work: `echo ... | mi`.
-- REPL command: `/reset` clears history (keeps system prompt).
+- REPL command: `/reset` clears history (keeps system prompt). Aliases: `/new`, `/clear`.
 - Env vars and config: see the **Config** section above.
 
 ## Procedure

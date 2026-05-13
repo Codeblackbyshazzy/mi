@@ -600,6 +600,41 @@ test('REPL mode and /reset', async () => {
   assert.strictEqual(lastBody.messages[1].content, 'world');
 });
 
+test('REPL /new and /clear are aliases for /reset', async () => {
+  let requestCount = 0;
+  let lastBody = null;
+  requestHandler = (req, res, body) => {
+    requestCount++;
+    lastBody = body;
+    sse(res, { role: 'assistant', content: `repl response ${requestCount}` });
+  };
+
+  const { child, getStdout, waitForClose } = spawnRepl();
+  let step = 0;
+
+  child.stdout.on('data', d => {
+    const out = d.toString();
+    if (out.includes('> ')) {
+      if (step === 0) { step++; child.stdin.write("first\n"); }
+      else if (step === 1) { step++; child.stdin.write("/new\n"); }
+      else if (step === 2) { step++; child.stdin.write("second\n"); }
+      else if (step === 3) { step++; child.stdin.write("/clear\n"); }
+      else if (step === 4) { step++; child.stdin.write("third\n"); }
+    }
+    if (getStdout().includes('repl response 3')) child.stdin.end();
+  });
+
+  const result = await waitForClose();
+  assert.strictEqual(result.status, 0);
+  assert.match(result.stdout, /✓ reset[\s\S]*✓ reset/);
+
+  // After two resets, history should only have system + the latest user message.
+  assert.strictEqual(lastBody.messages.length, 2);
+  assert.strictEqual(lastBody.messages[0].role, 'system');
+  assert.strictEqual(lastBody.messages[1].role, 'user');
+  assert.strictEqual(lastBody.messages[1].content, 'third');
+});
+
 test('clean ctrl-c and subprocess cleanup', async () => {
   const uniqueSleepCmd = 'sleep 10.98765';
   

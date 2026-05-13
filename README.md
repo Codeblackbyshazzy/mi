@@ -15,7 +15,7 @@ agentic coding in 30 loc. a loop, two tools, and an llm.
 - modular tools: add new tools by dropping `.mjs` files in `tools/` (hot-loaded before each model call)
 - `--sandbox` mode: run inside a Docker container with PWD mounted — safe for destructive experiments. image ships with node, python, uv, git, GNU coreutils/grep/sed/awk/find, curl, jq, ssh, rsync, vim, less, procps, util-linux, bind-tools (dig), iputils (ping), tree
 - automatic `AGENTS.md` ingestion from current directory for repo-specific context
-- chat REPL with `/reset` command and error recovery
+- chat REPL with `/reset` (aliases: `/new`, `/clear`) and error recovery
 - non-interactive mode with `-p 'prompt'` for scripting and CI
 - stdin pipes: `echo "do this" | mi` or `cat file | mi`
 - file context via `-f <file>` argument
@@ -40,7 +40,7 @@ docker run --rm -it -e OPENAI_API_KEY ghcr.io/av/mi
 ## usage
 
 ```sh
-# interactive repl (type /reset to clear history)
+# interactive repl (type /reset, /new, or /clear to clear history)
 OPENAI_API_KEY=sk-... mi
 
 # one-shot (run once, exit)

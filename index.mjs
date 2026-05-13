@@ -57,7 +57,7 @@ const SYSTEM = (process.env.SYSTEM_PROMPT || DEFAULT_PROMPT) + `\nCWD: ${process
 const history = [{ role: 'system', content: SYSTEM }];
 const getArg = key => { const i = process.argv.indexOf(key); return i >= 0 && process.argv[i + 1]; };
 
-const ver = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; if (['-v','--version'].some(f => process.argv.includes(f))) { console.log(ver); process.exit(0); } if (['-h','--help'].some(f => process.argv.includes(f))) { console.log(`mi ${ver}\n\nusage: mi [-p prompt] [-f file] [--sandbox] [-v]\n\nmodes:\n  mi -p "prompt"     one-shot\n  echo "..." | mi    pipe\n  mi                 repl (/reset clears)\n\nflags:\n  -p <prompt>        run prompt and exit\n  -f <file>          attach file to context\n  --sandbox          run in docker\n  -v, --version      print version\n  -h, --help         show this help\n\nenv: OPENAI_API_KEY MODEL OPENAI_BASE_URL REASONING_EFFORT SYSTEM_PROMPT MI_HOME MI_IMAGE`); process.exit(0); }
+const ver = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; if (['-v','--version'].some(f => process.argv.includes(f))) { console.log(ver); process.exit(0); } if (['-h','--help'].some(f => process.argv.includes(f))) { console.log(`mi ${ver}\n\nusage: mi [-p prompt] [-f file] [--sandbox] [-v]\n\nmodes:\n  mi -p "prompt"     one-shot\n  echo "..." | mi    pipe\n  mi                 repl (/reset, /new, /clear all reset history)\n\nflags:\n  -p <prompt>        run prompt and exit\n  -f <file>          attach file to context\n  --sandbox          run in docker\n  -v, --version      print version\n  -h, --help         show this help\n\nenv: OPENAI_API_KEY MODEL OPENAI_BASE_URL REASONING_EFFORT SYSTEM_PROMPT MI_HOME MI_IMAGE`); process.exit(0); }
 
 // Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message.
 const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n${readFileSync(fileArg, 'utf8')}`;
@@ -72,6 +72,6 @@ if (!process.stdin.isTTY) { let input = ''; for await (const chunk of process.st
 const readLine = createInterface({ input: process.stdin, output: process.stdout }); const promptUser = query => new Promise(resolve => readLine.question(query, resolve)); console.log(`${orange('◰ mi')}${gray(`/${ver}`)}`);
 
 // Ctrl-D (EOF) → clean exit; then loop: read input → run agent → repeat
-// /reset: keep system prompt (index 0), drop all conversation history
+// /reset (aliases: /new, /clear): keep system prompt (index 0), drop all conversation history
 // Error recovery: pop the failed user message so the model never sees it
-readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (input === '/reset') { history.splice(1); /* keep system prompt at [0] */ console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(`${gray('─────')}\n`); try { await run(history); } catch (error) { console.error(red(`✗ ${error.message}`)); history.pop(); } } }
+readLine.on('close', () => process.exit(0)); while (true) { const input = await promptUser('\n> '); if (['/reset','/new','/clear'].includes(input)) { history.splice(1); /* keep system prompt at [0] */ console.log(gray('✓ reset')); continue; } if (input.trim()) { history.push({ role: 'user', content: input }); process.stdout.write(`${gray('─────')}\n`); try { await run(history); } catch (error) { console.error(red(`✗ ${error.message}`)); history.pop(); } } }
