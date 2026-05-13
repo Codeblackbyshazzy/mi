@@ -88,6 +88,7 @@ any env var that mi reads can be set here: `OPENAI_API_KEY`, `MODEL`, `OPENAI_BA
 | `SYSTEM_PROMPT` | built-in agent prompt | override the system prompt entirely |
 | `MI_HOME` | `~/.mi` | config directory (reads `config.json`) |
 | `MI_SANDBOX` | (unset) | truthy = always run in Docker container |
+| `MI_API_PARAMS` | (unset) | JSON object merged into chat completion payload (e.g. `{"temperature":0}`) |
 | `MI_IMAGE` | `ghcr.io/av/mi:latest` | docker image for sandbox mode |
 
 ## deep dive

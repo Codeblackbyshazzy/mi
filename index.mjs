@@ -24,7 +24,7 @@ await loadTools();
 async function run(messages) { while (true) {
 
   // ─ Send streaming chat completion request ─
-  await loadTools(); const response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: process.env.MODEL || 'gpt-5.4', messages, tools: toolSchemas, stream: true, ...(process.env.REASONING_EFFORT && { reasoning_effort: process.env.REASONING_EFFORT }) }) });
+  await loadTools(); const response = await fetch(`${(process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/+$/, '')}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: JSON.stringify({ model: process.env.MODEL || 'gpt-5.4', messages, tools: toolSchemas, stream: true, ...(process.env.REASONING_EFFORT && { reasoning_effort: process.env.REASONING_EFFORT }), ...(process.env.MI_API_PARAMS && JSON.parse(process.env.MI_API_PARAMS)) }) });
   if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error?.message || `HTTP ${response.status}`); }
 
   // ─ Parse SSE stream: print content tokens, accumulate tool-call deltas by index ─
@@ -57,7 +57,7 @@ const SYSTEM = (process.env.SYSTEM_PROMPT || DEFAULT_PROMPT) + `\nCWD: ${process
 const history = [{ role: 'system', content: SYSTEM }];
 const getArg = key => { const i = process.argv.indexOf(key); return i >= 0 && process.argv[i + 1]; };
 
-const ver = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; if (['-v','--version'].some(f => process.argv.includes(f))) { console.log(ver); process.exit(0); } if (['-h','--help'].some(f => process.argv.includes(f))) { console.log(`mi ${ver}\n\nusage: mi [-p prompt] [-f file] [--sandbox] [-v]\n\nmodes:\n  mi -p "prompt"     one-shot\n  echo "..." | mi    pipe\n  mi                 repl (/reset, /new, /clear all reset history)\n\nflags:\n  -p <prompt>        run prompt and exit\n  -f <file>          attach file to context\n  --sandbox          run in docker\n  -v, --version      print version\n  -h, --help         show this help\n\nenv: OPENAI_API_KEY MODEL OPENAI_BASE_URL REASONING_EFFORT SYSTEM_PROMPT MI_HOME MI_IMAGE`); process.exit(0); }
+const ver = JSON.parse(readFileSync(`${DIR}package.json`, 'utf8')).version; if (['-v','--version'].some(f => process.argv.includes(f))) { console.log(ver); process.exit(0); } if (['-h','--help'].some(f => process.argv.includes(f))) { console.log(`mi ${ver}\n\nusage: mi [-p prompt] [-f file] [--sandbox] [-v]\n\nmodes:\n  mi -p "prompt"     one-shot\n  echo "..." | mi    pipe\n  mi                 repl (/reset, /new, /clear all reset history)\n\nflags:\n  -p <prompt>        run prompt and exit\n  -f <file>          attach file to context\n  --sandbox          run in docker\n  -v, --version      print version\n  -h, --help         show this help\n\nenv: OPENAI_API_KEY MODEL OPENAI_BASE_URL REASONING_EFFORT SYSTEM_PROMPT MI_HOME MI_IMAGE MI_API_PARAMS`); process.exit(0); }
 
 // Append -f file contents, AGENTS.md (auto-ingested repo context), and skill summaries to system message.
 const sysMsg = history[0], fileArg = getArg('-f'); if (fileArg) sysMsg.content += `\n\nFile (${fileArg}):\n${readFileSync(fileArg, 'utf8')}`;
