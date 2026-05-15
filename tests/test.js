@@ -1721,3 +1721,169 @@ test('skill tool: symlinked SKILL.md file is followed and loaded correctly', asy
     cleanup();
   }
 });
+
+// ── New feature tests ───────────────────────────────────────────────
+
+test('multiple -f flags attach all files to system prompt', async () => {
+  const fileA = join(__dirname, 'test_multi_f_a.txt');
+  const fileB = join(__dirname, 'test_multi_f_b.txt');
+  writeFileSync(fileA, 'alpha_content_aaa');
+  writeFileSync(fileB, 'beta_content_bbb');
+
+  requestHandler = (req, res, body) => {
+    const sysMsg = body.messages[0].content;
+    assert.match(sysMsg, /alpha_content_aaa/, 'First -f file should be in system prompt');
+    assert.match(sysMsg, /beta_content_bbb/, 'Second -f file should be in system prompt');
+    sse(res, { role: 'assistant', content: 'multi file ok' });
+  };
+
+  try {
+    const result = await runMi(['-f', fileA, '-f', fileB, '-p', 'check files']);
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /multi file ok/);
+  } finally {
+    if (existsSync(fileA)) unlinkSync(fileA);
+    if (existsSync(fileB)) unlinkSync(fileB);
+  }
+});
+
+test('-f with image sends base64 image_url in user message', async () => {
+  const imgFile = join(__dirname, 'test_image.png');
+  const pngBuf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==', 'base64');
+  writeFileSync(imgFile, pngBuf);
+
+  requestHandler = (req, res, body) => {
+    assert.strictEqual(typeof body.messages[0].content, 'string', 'System message should be a string');
+    const imgMsg = body.messages.find(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image_url'));
+    assert.ok(imgMsg, 'Should have a user message with image_url content');
+    const imgPart = imgMsg.content.find(p => p.type === 'image_url');
+    assert.match(imgPart.image_url.url, /^data:image\/png;base64,/, 'Should be a PNG data URI');
+    sse(res, { role: 'assistant', content: 'image ok' });
+  };
+
+  try {
+    const result = await runMi(['-f', imgFile, '-p', 'check image']);
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /image ok/);
+  } finally {
+    if (existsSync(imgFile)) unlinkSync(imgFile);
+  }
+});
+
+test('-f with .jpg uses image/jpeg MIME type', async () => {
+  const imgFile = join(__dirname, 'test_image.jpg');
+  writeFileSync(imgFile, Buffer.from([0xFF, 0xD8, 0xFF]));
+
+  requestHandler = (req, res, body) => {
+    const imgMsg = body.messages.find(m => Array.isArray(m.content));
+    assert.ok(imgMsg, 'Should have image message');
+    const imgPart = imgMsg.content.find(p => p.type === 'image_url');
+    assert.match(imgPart.image_url.url, /^data:image\/jpeg;base64,/, '.jpg should map to image/jpeg');
+    sse(res, { role: 'assistant', content: 'jpg ok' });
+  };
+
+  try {
+    const result = await runMi(['-f', imgFile, '-p', 'check jpg']);
+    assert.strictEqual(result.status, 0);
+  } finally {
+    if (existsSync(imgFile)) unlinkSync(imgFile);
+  }
+});
+
+test('mixed -f text and image: text in system, image in user message', async () => {
+  const txtFile = join(__dirname, 'test_mixed.txt');
+  const imgFile = join(__dirname, 'test_mixed.png');
+  writeFileSync(txtFile, 'text_file_content_xyz');
+  writeFileSync(imgFile, Buffer.from([0x89, 0x50, 0x4E, 0x47]));
+
+  requestHandler = (req, res, body) => {
+    assert.match(body.messages[0].content, /text_file_content_xyz/, 'Text file in system prompt');
+    const imgMsg = body.messages.find(m => Array.isArray(m.content));
+    assert.ok(imgMsg, 'Image should be in a separate user message');
+    assert.strictEqual(imgMsg.role, 'user');
+    sse(res, { role: 'assistant', content: 'mixed ok' });
+  };
+
+  try {
+    const result = await runMi(['-f', txtFile, '-f', imgFile, '-p', 'check mixed']);
+    assert.strictEqual(result.status, 0);
+  } finally {
+    if (existsSync(txtFile)) unlinkSync(txtFile);
+    if (existsSync(imgFile)) unlinkSync(imgFile);
+  }
+});
+
+test('-f followed by another flag does not treat flag as filename', async () => {
+  requestHandler = (req, res, body) => {
+    sse(res, { role: 'assistant', content: 'prompt received' });
+  };
+
+  const result = await runMi(['-f', '-p', 'hello']);
+  assert.strictEqual(result.status, 0, 'Should not crash when -f is followed by another flag');
+  assert.match(result.stdout, /prompt received/);
+});
+
+test('-f with nonexistent file gives clean error', async () => {
+  const result = await runMi(['-f', '/tmp/mi_test_does_not_exist_12345.txt', '-p', 'hello']);
+  assert.notStrictEqual(result.status, 0, 'Should exit with error');
+  assert.match(result.stderr, /not found|no such file/i, 'Should mention file not found');
+  assert.doesNotMatch(result.stderr, /at readFileSync|at Object\.|\.mjs:\d+:\d+/,
+    'Should not show raw stack trace');
+});
+
+test('REPL /help shows commands and all documented env vars', async () => {
+  const { child, getStdout, waitForClose } = spawnRepl();
+  let helpSent = false;
+
+  child.stdout.on('data', d => {
+    if (d.toString().includes('> ') && !helpSent) {
+      helpSent = true;
+      child.stdin.write('/help\n');
+      setTimeout(() => child.stdin.end(), 200);
+    }
+  });
+
+  const result = await waitForClose();
+  assert.strictEqual(result.status, 0);
+  assert.match(result.stdout, /\/reset/, '/help should mention /reset');
+  assert.match(result.stdout, /\/help/, '/help should mention /help');
+  assert.match(result.stdout, /MODEL/, '/help should mention MODEL');
+  assert.match(result.stdout, /SYSTEM_PROMPT/, '/help should mention SYSTEM_PROMPT');
+  assert.match(result.stdout, /MI_HOME/, '/help should mention MI_HOME');
+});
+
+test('-h help text documents repeatable -f with image support', async () => {
+  const result = await runMi(['-h'], { OPENAI_API_KEY: undefined });
+  assert.strictEqual(result.status, 0);
+  assert.match(result.stdout, /repeatable/, '-h should mention -f is repeatable');
+  assert.match(result.stdout, /image/, '-h should mention image support');
+});
+
+test('error .code preserved on HTTP error enables compaction', async () => {
+  let callCount = 0;
+  requestHandler = (req, res, body) => {
+    callCount++;
+    if (callCount === 1) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { code: 'context_length_exceeded', message: 'maximum context length is 8192 tokens' } }));
+    } else if (!body.stream) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: 'GOAL: test\nDONE: nothing\nSTATE: clean\nNEXT: respond\nCONSTRAINTS: none' } }] }));
+    } else {
+      sse(res, { role: 'assistant', content: 'recovered after compaction' });
+    }
+  };
+
+  const result = await runMi(['-p', 'trigger context overflow']);
+  assert.strictEqual(result.status, 0, 'Should recover via compaction');
+  assert.match(result.stdout, /compacted.*→2/, 'Should show compaction log');
+  assert.match(result.stdout, /recovered after compaction/);
+});
+
+test('MI_API_PARAMS with invalid JSON gives clean error', async () => {
+  const result = await runMi(['-p', 'hello'], { MI_API_PARAMS: '{bad json' });
+  assert.notStrictEqual(result.status, 0, 'Should exit with error');
+  assert.match(result.stderr, /MI_API_PARAMS|JSON/i, 'Should mention config or JSON issue');
+  assert.doesNotMatch(result.stderr, /at JSON\.parse|at run \(|\.mjs:\d+:\d+/,
+    'Should not show raw stack trace');
+});
