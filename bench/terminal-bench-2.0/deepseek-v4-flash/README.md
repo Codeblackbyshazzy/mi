@@ -43,16 +43,16 @@ It is the concrete artifact for advancing the timeboxed 30-task Terminal-Bench g
 **30 tasks list**:
 count-dataset-tokens train-fasttext caffe-cifar-10 fix-code-vulnerability sanitize-git-repo adaptive-rejection-sampler dna-assembly fix-git torch-tensor-parallelism gpt2-codegolf llm-inference-batching-scheduler break-filter-js-from-html reshard-c4-data write-compressor merge-diff-arc-agi-task winning-avg-corewars log-summary-date-ranges pytorch-model-cli largest-eigenval regex-chess crack-7z-hash db-wal-recovery path-tracing polyglot-c-py mcmc-sampling-stan hf-model-inference qemu-startup configure-git-webserver chess-best-move openssl-selfsigned-cert
 
-**Live batch status (timeboxed 30-task eval, iter 4 as of ~01:43 CEST 2026)**:
-- Batch 1 (2 tasks): regex-chess, crack-7z-hash — launched iter1 (PIDs 1089838 mi / 1090236 terminus); mi 0/2, term 1/2 completed; snapshot in `2026-05-19_2task_regex-chess_crack7z_iter1/`
-- Batch 2 (4 tasks): fix-git, db-wal-recovery, path-tracing, polyglot-c-py — launched iter2 (PIDs 1165089/1168602); mi 2/4 completed (1+ live verified pass from rewards), term 0/4; still running
-- Batch 3 (5 tasks): largest-eigenval, mcmc-sampling-stan, hf-model-inference, qemu-startup, configure-git-webserver — launched iter3 (PIDs 1269524 mi / 1272212 terminus); mi 0/5, term 1/5 (1 live verified pass); new /tmp/mi-30-eval-iter3-*
-- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4 (PIDs 1382249 mi / 1386919 terminus, n-conc 1/2); 0/3; just starting, new /tmp/mi-30-eval-iter4-*
-- Monitor improved (broader docker task detection for any __*-main-1, total count); aggregator enhanced (live verified pass counts from reward.txt in /tmp jobs).
-- Use `mi_harbor/monitor-30task-evals.sh --tail 20` + `mi_harbor/aggregate-tb-results.sh` for rolling status + table (now shows early passes: mi +1 in batch2 live).
-- Remaining ~16 tasks pending (e.g. count-dataset-tokens, caffe-cifar-10, fix-code-vulnerability, sanitize-git-repo, gpt2-codegolf, winning-avg-corewars, log-summary-date-ranges, dna-assembly, torch-tensor-parallelism etc.) — more batches before 6am.
+**Live batch status (timeboxed 30-task eval, collection phase ~01:50 CEST 2026, after 3 monitor/agg cycles)**:
+- Batch 1 (2 tasks): regex-chess, crack-7z-hash — launched iter1 (PIDs 1089838 mi still running 0/2 / 1090236 terminus finished); **real final for terminus: 2/2 completed, Pass rate 1/2 (50%) — crack-7z-hash=pass, regex-chess=fail** (meanR 0.5); new dedicated snapshot `2026-05-19_batch1_regex-chess_crack7z_terminus_final/` with full ts dir, score.txt, notes (first real 30-task artifact); provisional snapshot in `2026-05-19_2task_regex-chess_crack7z_iter1/`
+- Batch 2 (4 tasks): fix-git, db-wal-recovery, path-tracing, polyglot-c-py — launched iter2 (PIDs 1165089/1168602); **mi high progress 3/4 completed, real provisional Pass rate 1/3 (33%) on completed — fix-git=pass (consistent baseline), db-wal+path=fail, polyglot pending** (meanR 0.333); new snapshot `2026-05-19_batch2_4task_fixgit_dbwal_path_polyglot_mi_partial/` with copied job dir + accurate score/notes; term progressed to 2/4 +1 pass in later cycles
+- Batch 3 (5 tasks): largest-eigenval, mcmc-sampling-stan, hf-model-inference, qemu-startup, configure-git-webserver — launched iter3; mi 1/5 +1 verified pass, term 2/5 +1 pass (e.g. configure-git-webserver confirmed reward=1); live /tmp/mi-30-eval-iter3-*
+- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4 (PIDs 1382249 mi / 1386919 terminus); 0/3 just ramping (containers active); /tmp/mi-30-eval-iter4-*
+- **New real snapshots this collection iter (first verified from 30-task run)**: see above batch1-terminus-final (1/2) + batch2-mi-partial (1/3); monitor/agg now list 47 run dirs total; 3 poll cycles (60-90s sleeps) performed focusing batches 1-2
+- Monitor/agg tools robust (detect new snapshots, live rewards from reward.txt=1, docker __*-main-1); use them for rolling + table (now shows mi + term at least ~3 passes each incl. baseline + new)
+- Remaining ~16 tasks pending — watch for more completions before 6am (no batch5 launched, docker ~16 not sufficiently low post cleanups)
 - 10-task estimator results (prior): mi 2/10 pass in `2026-05-18_10task_estimator/`
-- See `current-results-summary.md` (committed artifact) for latest aggregator table + full 30-task status + 6am projection.
+- See `current-results-summary.md` (updated with new real scores, pass lists, grand totals ~3+ each side, completed task breakdown) for full status + projection.
 
 **Another harness defined**: `terminus` / `terminus-2`
 - The official/reference Terminal-Bench harness/agent bundled with Harbor.

@@ -119,3 +119,55 @@ terminus: 0 passes / 0 completed / 12 tasks  (0.0% pass rate on completed)
 
 ---
 *End of current-results-summary.md (regenerated/updated each iteration with fresh monitor+agg output)*
+---
+
+## Collection Updates — This Iteration (real verified scores captured, ~01:50 CEST 2026, after 3 poll cycles)
+
+**New real bench/ artifacts produced (first from the 30-task run, beyond May 18 10-task baseline):**
+
+1. **terminus batch1 final snapshot**:
+   - Path: `bench/terminal-bench-2.0/deepseek-v4-flash/terminus/2026-05-19_batch1_regex-chess_crack7z_terminus_final/`
+   - Real score: **Pass rate: 1 / 2 (50%)**, Mean reward: 0.5
+   - Passed: `crack-7z-hash` (reward.txt=1)
+   - Failed: `regex-chess` (0)
+   - Full ts dir + command.sh + launch log + detailed notes.md with per-harness obs + mi vs term diffs copied from /tmp/mi-30-eval-iter1/terminus/2026-05-19__01-30-36 (finished 2/2 at 01:45)
+   - Duration ~15min
+
+2. **mi batch2 partial high-progress snapshot** (focus on older batch2 where mi 3/4 +1pass):
+   - Path: `bench/terminal-bench-2.0/deepseek-v4-flash/mi/2026-05-19_batch2_4task_fixgit_dbwal_path_polyglot_mi_partial/`
+   - Real (provisional) score: **Pass rate: 1 / 3 (33% on completed; 4th pending)**, Mean reward: 0.333
+   - Passed: `fix-git` (consistent with 10-task baseline)
+   - Failed (completed): `db-wal-recovery`, `path-tracing` (0 reward; noted agent exit errs in stats)
+   - Pending: `polyglot-c-py`
+   - Full ts dir copied from /tmp/mi-30-eval-iter2/mi/2026-05-19__01-34-18 , + command.sh, launch logs, notes.md (mi vs term diffs: mi 3/4 vs term 0/4 at capture time; term later showed progress in cycle3)
+   - Snapshot time ~01:48 after cycles
+
+**Updated live signals (cycle 3 post-sleep 90s)**:
+- mi iter2 (batch2): still ~3/4 , 1 pass
+- term iter2 (batch2): progressed to 2/4 completed, 1/2 rewards → **+1 verified pass** for term on batch2
+- mi iter3: 1/5 completed, 1 pass
+- term iter3: 2/5 , 1 pass (of 2 rewards)
+- term batch1: confirmed 2/2 1pass
+- Docker: continued drop (16->? during cycles; one container per finished task cleaned)
+- Monitor now detects the new snapshot dirs we created (total run dirs 47)
+
+**Updated grand totals (incorporating new real snapshots + live rewards, beyond prior 2/10 mi baseline)**:
+- mi passes so far: 2 (10-task) + 1 (batch2 fix-git) = **at least 3**; plus live signals in batch3
+- terminus passes: 1 (batch1 crack-7z-hash) + 1 (batch2) + 1 (batch3 configure-git) = **at least 3**
+- More will accrue as pending finish (polyglot, remaining in 3/4, batch4 just ramping)
+
+**Actually completed tasks with pass/fail (from snapshots + verified rewards)**:
+- Batch1 (regex-chess, crack-7z-hash):
+  - terminus: crack-7z-hash=pass, regex-chess=fail (1/2)
+  - mi: still pending (0/2 at early polls)
+- Batch2 (fix-git, db-wal-recovery, path-tracing, polyglot-c-py):
+  - mi: fix-git=pass, db-wal= fail, path-tracing=fail, polyglot=pending (1/3)
+  - term: 2/4 completed with 1 pass (specific task ID from rewards not re-scanned here but in /tmp)
+- Batch3: term 2/5 with 1 pass (configure-git-webserver confirmed earlier), mi 1/5 1 pass
+
+**Docs updated**: this summary + deepseek-v4-flash/README.md (live batch status + new snapshots section) + progress file (via this run). No batch5 launched (docker ~16 not low enough post-completions; respect capacity, batch4 still active with 8+ containers).
+
+**High-impact**: These are the first verified real scores from 30-task run in bench/. Continue collection over next ~4h (more finishes expected in batch2/3), final report ~5:30-6am. Monitor/agg will show rising n_completed.
+
+**Cycle count in this unit**: 3 full (60s +90s sleeps + runs); focused older batches 1-2 per plan.
+

@@ -1,0 +1,3 @@
+New Terminal Output:
+
+Enter password (will not be echoed):root@65d87fd22d30:/app#
