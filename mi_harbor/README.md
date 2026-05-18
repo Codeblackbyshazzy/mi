@@ -52,9 +52,18 @@ Use the committed helper for the timeboxed 30-task runs:
 ```bash
 ./mi_harbor/monitor-30task-evals.sh
 ./mi_harbor/monitor-30task-evals.sh --tail 20
+./mi_harbor/monitor-30task-evals.sh --help
 ```
 
-It reports PIDs/logs for iter* batches, live result.json stats (completed trials), active docker containers, bench/ snapshot dirs, and tips. Run it periodically while the nohup bg jobs (PIDs in /tmp/mi-30-eval-*-*.pid) execute the 30 tasks in chunks.
+It reports PIDs/logs for iter* batches (auto-discovers iter1/2/3+), live result.json stats (completed trials), active docker containers, bench/ snapshot dirs, and tips. Run it periodically while the nohup bg jobs (PIDs in /tmp/mi-30-eval-*-*.pid) execute the 30 tasks in chunks.
+
+## Aggregating results
+
+```bash
+./mi_harbor/aggregate-tb-results.sh
+```
+
+New side-artifact (iter 3): walks all `bench/terminal-bench-2.0/deepseek-v4-flash/{mi,terminus}/*/` run dirs + live `/tmp` result.json, parses `score.txt`, `result.json`, `verifier/reward.txt`, and prints per-run table + grand totals for pass rates (mi vs terminus), completed counts, rough diffs. Re-run after each batch completion / snapshot for updated report. Executable, tested on existing 10-task + 2-task + live iter3 data.
 
 ## Running Terminal-Bench 2.0 manually
 

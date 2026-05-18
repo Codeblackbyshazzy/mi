@@ -10,6 +10,12 @@
 # This advances the timeboxed goal of 30-task evals (mi vs another harness).
 # Builds on the proven 10-task estimator (see openrouter-deepseek-v4-flash-tb2-10.sh).
 #
+# Live status / tooling (updated iter 3):
+# - Batches launched progressively (see bench/README.md "Live batch status")
+# - Monitor: ./mi_harbor/monitor-30task-evals.sh --tail 20  (now handles iter3+ auto)
+# - Aggregate: ./mi_harbor/aggregate-tb-results.sh  (new, walks bench/ + live for table of pass@1)
+# - All following established nohup + /tmp/mi-30-eval-iterN-*.pid patterns; no core mi changes.
+#
 # Selection criteria for the 30 tasks:
 # - Includes the prior 10-task goldilocks set (best extrapolation from 10)
 # - Adds 20 more tasks for broader coverage across categories:
