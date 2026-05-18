@@ -43,13 +43,16 @@ It is the concrete artifact for advancing the timeboxed 30-task Terminal-Bench g
 **30 tasks list**:
 count-dataset-tokens train-fasttext caffe-cifar-10 fix-code-vulnerability sanitize-git-repo adaptive-rejection-sampler dna-assembly fix-git torch-tensor-parallelism gpt2-codegolf llm-inference-batching-scheduler break-filter-js-from-html reshard-c4-data write-compressor merge-diff-arc-agi-task winning-avg-corewars log-summary-date-ranges pytorch-model-cli largest-eigenval regex-chess crack-7z-hash db-wal-recovery path-tracing polyglot-c-py mcmc-sampling-stan hf-model-inference qemu-startup configure-git-webserver chess-best-move openssl-selfsigned-cert
 
-**Live batch status (timeboxed 30-task eval, iter 3 as of ~01:39 CEST 2026)**:
-- Batch 1 (2 tasks): regex-chess, crack-7z-hash — launched iter1 (PIDs 1089838 mi / 1090236 terminus); 0/2 completed; snapshot in `2026-05-19_2task_regex-chess_crack7z_iter1/`
-- Batch 2 (4 tasks): fix-git, db-wal-recovery, path-tracing, polyglot-c-py — launched iter2 (PIDs 1165089/1168602); 0/4 completed; still running
-- Batch 3 (5 tasks): largest-eigenval, mcmc-sampling-stan, hf-model-inference, qemu-startup, configure-git-webserver — launched iter3 (PIDs 1269524 mi / 1272212 terminus); 0/5; new /tmp/mi-30-eval-iter3-*
-- Use `mi_harbor/monitor-30task-evals.sh --tail 20` for live PIDs/etime/docker/result counts; `mi_harbor/aggregate-tb-results.sh` for summary table across all bench/ + live.
-- Remaining ~19 tasks to be launched in subsequent batches (e.g. chess-best-move, openssl-selfsigned-cert, winning-avg-corewars, log-summary-date-ranges + earlier ML/SWE ones) before 6am deadline.
+**Live batch status (timeboxed 30-task eval, iter 4 as of ~01:43 CEST 2026)**:
+- Batch 1 (2 tasks): regex-chess, crack-7z-hash — launched iter1 (PIDs 1089838 mi / 1090236 terminus); mi 0/2, term 1/2 completed; snapshot in `2026-05-19_2task_regex-chess_crack7z_iter1/`
+- Batch 2 (4 tasks): fix-git, db-wal-recovery, path-tracing, polyglot-c-py — launched iter2 (PIDs 1165089/1168602); mi 2/4 completed (1+ live verified pass from rewards), term 0/4; still running
+- Batch 3 (5 tasks): largest-eigenval, mcmc-sampling-stan, hf-model-inference, qemu-startup, configure-git-webserver — launched iter3 (PIDs 1269524 mi / 1272212 terminus); mi 0/5, term 1/5 (1 live verified pass); new /tmp/mi-30-eval-iter3-*
+- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4 (PIDs 1382249 mi / 1386919 terminus, n-conc 1/2); 0/3; just starting, new /tmp/mi-30-eval-iter4-*
+- Monitor improved (broader docker task detection for any __*-main-1, total count); aggregator enhanced (live verified pass counts from reward.txt in /tmp jobs).
+- Use `mi_harbor/monitor-30task-evals.sh --tail 20` + `mi_harbor/aggregate-tb-results.sh` for rolling status + table (now shows early passes: mi +1 in batch2 live).
+- Remaining ~16 tasks pending (e.g. count-dataset-tokens, caffe-cifar-10, fix-code-vulnerability, sanitize-git-repo, gpt2-codegolf, winning-avg-corewars, log-summary-date-ranges, dna-assembly, torch-tensor-parallelism etc.) — more batches before 6am.
 - 10-task estimator results (prior): mi 2/10 pass in `2026-05-18_10task_estimator/`
+- See `current-results-summary.md` (committed artifact) for latest aggregator table + full 30-task status + 6am projection.
 
 **Another harness defined**: `terminus` / `terminus-2`
 - The official/reference Terminal-Bench harness/agent bundled with Harbor.

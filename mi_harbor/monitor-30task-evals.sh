@@ -91,7 +91,10 @@ done
 echo
 
 echo "=== Docker containers for active T-Bench tasks ==="
-docker ps --format '{{.Names}}\t{{.Status}}' 2>/dev/null | grep -E 'chess|crack|7z|wal|path|polyglot|fix-git|largest|mcmc|hf-model|qemu|configure|openssl|corewars|log-summary' || echo "  (no matching active task containers or docker not listing)"
+TOTAL_DOCKERS=$(docker ps --format '{{.Names}}' 2>/dev/null | wc -l)
+echo "Total docker containers running: $TOTAL_DOCKERS"
+echo "Active T-Bench task containers (harbor envs):"
+docker ps --format '{{.Names}}\t{{.Status}}' 2>/dev/null | grep -E '__[0-9a-z]{5,}-main-1' | grep -vE '^(av-|hbbs|hbbr)' || echo "  (no matching active task containers or docker not listing)"
 echo
 
 echo "=== Bench artifacts present ==="

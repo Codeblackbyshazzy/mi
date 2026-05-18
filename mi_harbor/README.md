@@ -63,7 +63,7 @@ It reports PIDs/logs for iter* batches (auto-discovers iter1/2/3+), live result.
 ./mi_harbor/aggregate-tb-results.sh
 ```
 
-New side-artifact (iter 3): walks all `bench/terminal-bench-2.0/deepseek-v4-flash/{mi,terminus}/*/` run dirs + live `/tmp` result.json, parses `score.txt`, `result.json`, `verifier/reward.txt`, and prints per-run table + grand totals for pass rates (mi vs terminus), completed counts, rough diffs. Re-run after each batch completion / snapshot for updated report. Executable, tested on existing 10-task + 2-task + live iter3 data.
+New side-artifact (updated iter 4): walks all `bench/terminal-bench-2.0/deepseek-v4-flash/{mi,terminus}/*/` run dirs + live `/tmp` result.json, parses `score.txt`, `result.json`, `verifier/reward.txt`, and prints per-run table + grand totals for pass rates (mi vs terminus), completed counts, rough diffs. Enhanced to report live verified passes from reward files in running batches. Re-run after each batch completion / snapshot for updated report. Executable, tested on existing 10-task + 2-task + live iters (incl. batch4). Monitor also improved for broader task container detection.
 
 ## Running Terminal-Bench 2.0 manually
 

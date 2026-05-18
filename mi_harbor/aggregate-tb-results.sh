@@ -170,15 +170,26 @@ for res in /tmp/mi-30-eval-*/{mi,terminus}/20*/result.json; do
   live_found=1
   echo "$res"
   python3 -c '
-import json,sys,os
+import json,sys,os,glob
 d=json.load(open(sys.argv[1]))
 s=d.get("stats",{})
-print("  n_completed: {}/{}  running={}  finished={}".format(
-  s.get("n_completed_trials",0),
-  d.get("n_total_trials","?"),
-  s.get("n_running_trials",0),
-  bool(d.get("finished_at"))
-))
+ncomp = s.get("n_completed_trials",0)
+ntot = d.get("n_total_trials","?")
+nrun = s.get("n_running_trials",0)
+fin = bool(d.get("finished_at"))
+print("  n_completed: {}/{}  running={}  finished={}".format(ncomp, ntot, nrun, fin))
+# also scan for actual verified passes in this live jobdir (reward.txt==1)
+jobdir = os.path.dirname(sys.argv[1])
+rewards = glob.glob(os.path.join(jobdir, "**/verifier/reward.txt"), recursive=True)
+passes = 0
+for rf in rewards:
+  try:
+    with open(rf) as f:
+      v = f.read().strip()
+      if v.startswith("1"): passes += 1
+  except: pass
+if rewards:
+  print("  live verified passes (reward=1): {}/{} (from {} reward files)".format(passes, len(rewards), len(rewards)))
 ' "$res" 2>/dev/null || echo "  (parse err)"
 done
 shopt -u nullglob
