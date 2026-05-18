@@ -21,6 +21,41 @@ uv tool install harbor
 ./run-subset.sh
 ```
 
+## Reusable Test Presets
+
+The `presets/` directory contains documented, ready-to-run configurations for common evaluation scenarios.
+
+**Current preset:**
+
+- `openrouter-deepseek-v4-flash-tb2-10.sh` — Best 10-task subset for estimating full Terminal-Bench 2.0 performance of the minimal `mi` agent + DeepSeek-V4-Flash via OpenRouter.
+
+  ```bash
+  ./mi_harbor/presets/openrouter-deepseek-v4-flash-tb2-10.sh
+  ```
+
+  This subset was chosen via stratified sampling across difficulty and category to give the most accurate possible extrapolation to the full 89-task benchmark. See the script header for the exact task list and rationale.
+
+  To run the **full 89-task** benchmark with the same model/backend, remove the `--include-task-name` lines (or edit the script) and omit `--n-tasks 10`.
+
+- `openrouter-deepseek-v4-flash-tb2-30.sh` — 30-task stratified subset for side-by-side `mi` vs `terminus-2` (reference harness) on Terminal-Bench 2.0. Used for the timeboxed eval goal (mi vs another harness). Includes the 10 + 20 diverse tasks. Run with the preset for mi; use `--agent terminus-2 --agent-import-path ''` (or edit) for the reference side.
+
+  ```bash
+  ./mi_harbor/presets/openrouter-deepseek-v4-flash-tb2-30.sh
+  # or for terminus reference batch:
+  # harbor run ... --agent terminus-2 ... (see preset header + progress file)
+  ```
+
+## Monitoring live eval progress
+
+Use the committed helper for the timeboxed 30-task runs:
+
+```bash
+./mi_harbor/monitor-30task-evals.sh
+./mi_harbor/monitor-30task-evals.sh --tail 20
+```
+
+It reports PIDs/logs for iter* batches, live result.json stats (completed trials), active docker containers, bench/ snapshot dirs, and tips. Run it periodically while the nohup bg jobs (PIDs in /tmp/mi-30-eval-*-*.pid) execute the 30 tasks in chunks.
+
 ## Running Terminal-Bench 2.0 manually
 
 ```bash
@@ -44,6 +79,9 @@ harbor run \
 | `OPENAI_BASE_URL` | API endpoint (default: `http://localhost:33831`). |
 | `MODEL` | Model to use (default: `unsloth/Qwen3.6-35B-A3B-GGUF:Q4_K_XL`). |
 | `PYTHONPATH` | Must include the mi repo root for harbor to find `mi_harbor.mi_agent`. |
+
+> **Note on OpenRouter / custom base URLs**  
+> The current `index.mjs` and `mi_agent.py` contain URL normalization logic (`_api` + `HEALTH_URL`) so that providers which publish their base URL already containing `/v1` (OpenRouter, many routers, LiteLLM, etc.) work correctly. Make sure you are running from a checkout that includes these fixes.
 
 ## Cloud Providers
 
