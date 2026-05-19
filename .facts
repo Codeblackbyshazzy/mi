@@ -22,6 +22,8 @@
 - core logic lives in index.mjs — every non-shebang line is intentionally dense
 - label: tools hot-load from tools/*.mjs via dynamic import before each model call
   command: grep -q 'await loadTools(); const response' index.mjs
+- label: tools loaded from two search paths: bundled (MI_DIR/tools/) then user (MI_HOME/tools/); user tools override by name
+  command: grep -q 'MI_HOME.*tools' index.mjs
 - tool modules default-export { name, description, parameters, handler }
 - label: skills are markdown playbooks in skills/<name>/SKILL.md with YAML frontmatter
   command: test -f skills/debug/SKILL.md && head -1 skills/debug/SKILL.md | grep -q '^---'

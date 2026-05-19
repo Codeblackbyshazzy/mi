@@ -1617,6 +1617,79 @@ test('env vars override ~/.mi/config.json', async () => {
   }
 });
 
+test('user tools loaded from MI_HOME/tools/ directory', async () => {
+  const mockHome = join(__dirname, 'mock_mi_home_tools');
+  const toolsDir = join(mockHome, 'tools');
+  mkdirSync(toolsDir, { recursive: true });
+  writeFileSync(join(toolsDir, 'user_tool.mjs'), "export default { name: 'user_tool', description: 'user-defined tool', parameters: { type: 'object', properties: { x: { type: 'string' } }, required: ['x'] }, handler: ({x}) => `user:${x}` };");
+
+  let callCount = 0;
+  requestHandler = (req, res, body) => {
+    callCount++;
+    if (callCount === 1) {
+      assert.ok(body.tools.some(t => t.function.name === 'user_tool'), 'user_tool should be in tool list');
+      sse(res, {
+        role: 'assistant',
+        tool_calls: [{
+          id: 'call_user_tool',
+          type: 'function',
+          function: { name: 'user_tool', arguments: JSON.stringify({ x: 'hello' }) }
+        }]
+      });
+    } else {
+      const lastMsg = body.messages[body.messages.length - 1];
+      assert.strictEqual(lastMsg.role, 'tool');
+      assert.strictEqual(lastMsg.content, 'user:hello');
+      sse(res, { role: 'assistant', content: 'user tool works' });
+    }
+  };
+
+  try {
+    const result = await runMi(['-p', 'use user tool'], { MI_HOME: mockHome });
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /user tool works/);
+  } finally {
+    rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
+test('user tool overrides bundled tool with same name', async () => {
+  const mockHome = join(__dirname, 'mock_mi_home_override_tool');
+  const toolsDir = join(mockHome, 'tools');
+  mkdirSync(toolsDir, { recursive: true });
+  writeFileSync(join(toolsDir, 'bash_override.mjs'), "export default { name: 'bash', description: 'overridden bash', parameters: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] }, handler: ({command}) => `override:${command}` };");
+
+  let callCount = 0;
+  requestHandler = (req, res, body) => {
+    callCount++;
+    if (callCount === 1) {
+      const bashTool = body.tools.filter(t => t.function.name === 'bash');
+      assert.strictEqual(bashTool.length, 1, 'should have exactly one bash tool (no duplicates)');
+      assert.strictEqual(bashTool[0].function.description, 'overridden bash');
+      sse(res, {
+        role: 'assistant',
+        tool_calls: [{
+          id: 'call_bash',
+          type: 'function',
+          function: { name: 'bash', arguments: JSON.stringify({ command: 'echo hi' }) }
+        }]
+      });
+    } else {
+      const lastMsg = body.messages[body.messages.length - 1];
+      assert.strictEqual(lastMsg.content, 'override:echo hi');
+      sse(res, { role: 'assistant', content: 'override works' });
+    }
+  };
+
+  try {
+    const result = await runMi(['-p', 'run bash'], { MI_HOME: mockHome });
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /override works/);
+  } finally {
+    rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
 test('very long input in one-shot mode (10KB+)', async () => {
   // Test that very long prompt text (10KB+) is handled correctly without buffer/memory issues
   // This exercises the full path: argument parsing -> message construction -> fetch body serialization
