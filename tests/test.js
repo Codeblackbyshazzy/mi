@@ -1690,6 +1690,44 @@ test('user tool overrides bundled tool with same name', async () => {
   }
 });
 
+test('broken user tool degrades to stub instead of crashing', async () => {
+  const mockHome = join(__dirname, 'mock_mi_home_broken');
+  const toolsDir = join(mockHome, 'tools');
+  mkdirSync(toolsDir, { recursive: true });
+  writeFileSync(join(toolsDir, 'bad_tool.mjs'), "import nonexistent from 'nonexistent-pkg-xyz-999';\nexport default { name: 'bad_tool', description: 'will not load', parameters: { type: 'object', properties: {} }, handler: () => 'nope' };");
+
+  let callCount = 0;
+  requestHandler = (req, res, body) => {
+    callCount++;
+    if (callCount === 1) {
+      const bad = body.tools.find(t => t.function.name === 'bad_tool');
+      assert.ok(bad, 'broken tool should still appear in tool list as stub');
+      assert.match(bad.function.description, /\[broken\]/);
+      sse(res, {
+        role: 'assistant',
+        tool_calls: [{
+          id: 'call_bad',
+          type: 'function',
+          function: { name: 'bad_tool', arguments: '{}' }
+        }]
+      });
+    } else {
+      const lastMsg = body.messages[body.messages.length - 1];
+      assert.match(lastMsg.content, /Error.*tool failed to load/);
+      sse(res, { role: 'assistant', content: 'handled gracefully' });
+    }
+  };
+
+  try {
+    const result = await runMi(['-p', 'try broken tool'], { MI_HOME: mockHome });
+    assert.strictEqual(result.status, 0);
+    assert.match(result.stdout, /handled gracefully/);
+    assert.match(result.stderr, /✗.*bad_tool/);
+  } finally {
+    rmSync(mockHome, { recursive: true, force: true });
+  }
+});
+
 test('very long input in one-shot mode (10KB+)', async () => {
   // Test that very long prompt text (10KB+) is handled correctly without buffer/memory issues
   // This exercises the full path: argument parsing -> message construction -> fetch body serialization
