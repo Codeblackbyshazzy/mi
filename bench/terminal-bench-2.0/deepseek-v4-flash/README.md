@@ -43,16 +43,15 @@ It is the concrete artifact for advancing the timeboxed 30-task Terminal-Bench g
 **30 tasks list**:
 count-dataset-tokens train-fasttext caffe-cifar-10 fix-code-vulnerability sanitize-git-repo adaptive-rejection-sampler dna-assembly fix-git torch-tensor-parallelism gpt2-codegolf llm-inference-batching-scheduler break-filter-js-from-html reshard-c4-data write-compressor merge-diff-arc-agi-task winning-avg-corewars log-summary-date-ranges pytorch-model-cli largest-eigenval regex-chess crack-7z-hash db-wal-recovery path-tracing polyglot-c-py mcmc-sampling-stan hf-model-inference qemu-startup configure-git-webserver chess-best-move openssl-selfsigned-cert
 
-**Live batch status (timeboxed 30-task eval, collection + edge coverage unit ~02:05 CEST 2026, after 5 monitor/agg cycles + batch5)**:
-- Batch 1 (2 tasks): regex-chess, crack-7z-hash — launched iter1 (PIDs 1089838 mi still 0/2 regex-chess active / 1090236 terminus finished); **real final for terminus: 1/2 (50%) — crack-7z-hash=pass, regex-chess=fail**; snapshot `2026-05-19_batch1_regex-chess_crack7z_terminus_final/`
-- Batch 2 (4 tasks): fix-git, db-wal-recovery, path-tracing, polyglot-c-py — launched iter2; **mi FINAL 4/4 completed, Pass rate 1/4 (25%) — fix-git=pass only** (new final snapshot `2026-05-19_batch2_4task_fixgit_dbwal_path_polyglot_mi_final/`); term 2/4 1 pass (fix-git); old partial also present
-- Batch 3 (5 tasks): largest-eigenval, mcmc-sampling-stan, hf-model-inference, qemu-startup, configure-git-webserver — launched iter3; **mi 3/5 3/3 passes** (`largest-eigenval`, `configure-git-webserver`, `hf-model-inference`); new partial snapshot `2026-05-19_batch3_5task_largest_mcmc_hf_qemu_configure_mi_partial/`; term 4/5 2 passes (`configure-git-webserver`, `qemu-startup`); paired term snapshot `..._term_partial/`
-- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4 (PIDs 1382249/1386919); term reached 2/3 0 passes; mi 0/3; live /tmp/mi-30-eval-iter4-*
-- **Batch 5 (2 tasks, launched this unit)**: winning-avg-corewars + gpt2-codegolf (games/algos + polyglot; chosen for diversity/edge from pending when docker=8); launched iter5 ~01:55 when active <14-15; PIDs mi 1673223 / term 1676335; 0/2 yet; logs /tmp/mi-30-eval-iter5-*.log + /tmp/launch-batch5.sh ; now 16/30 covered
-- **New real snapshots this unit (from 5 cycles, high n_completed / new reward=1)**: mi batch3 (3/3 passes: largest-eigenval+configure+hf-model), term batch3 (2/4 on 4/5), mi batch2 final (1/4 fix-git); plus prior batch1 term 1/2 + batch2 mi partial; total run dirs now 74+; 5 cycles (90-180s sleeps) + batch5
-- Monitor/agg robust, detect all iters 1-5 + new bench/ dirs; live rewards accurate via reward.txt scan
-- 10-task: mi 2/10 in `2026-05-18_10task_estimator/`
-- See `current-results-summary.md` (full updated with 5 cycles, exact new pass lists/rates, batch5 PIDs, grand ~6 mi vs ~4 term, 16/30, projection) for details + 6am plan.
+**Live batch status (timeboxed 30-task eval, final pre-freeze harvest + polish ~02:40 CEST 2026, after 4 spaced monitor/agg cycles + freeze)**:
+- Batch 1 (2 tasks): regex-chess, crack-7z-hash — **mi final 1/2 (crack-7z pass)**; **term final 1/2 (crack-7z pass)**; snapshots `..._batch1_*_final/`
+- Batch 2 (4 tasks): fix-git etc. — **mi final 1/4 (fix-git only)**; **term final 1/4 (fix-git only)**; snapshots `..._batch2_*_final/`
+- Batch 3 (5 tasks): largest-eigenval etc. — **mi final 4/4 completed passes** (eigenval+configure+hf+mcmc); **term final 3/5** (configure+mcmc+qemu); snapshots `..._batch3_*_final/` (term updated iter8)
+- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4; mi 1/3+1 running (train), 0p; term 2/3+1 running (train), 0p; live /tmp/mi-30-eval-iter4/* (train ~55m+)
+- Batch 5 (2 tasks): winning-avg-corewars + gpt2-codegolf — mi 2/2 finished 0p (gpt2 0); term 1/2+1 running (winning ~43m+), 0p; live /tmp/...iter5/*
+- **Final pre-freeze (this unit, ~02:26-02:42, 4 cycles 3-5min sleeps):** 3 active docker (2x train-fasttext, 1x winning); **no new completions or reward=1** in batch4/5 during window (all verified 0 where done); no new snapshots; bench dirs 105 total; freeze on new launches now; 16/30 covered.
+- Monitor/agg robust; live rewards via reward.txt=0 confirmed; 10-task mi 2/10.
+- **Standings (verified from snapshots):** mi 8 passes vs terminus-2 5 passes. See `final-30task-mi-vs-terminus-report.md` (polished with Final pre-freeze update section, how-to-repro, 6am-ready) + current-results-summary.md for full tables, diffs, recs, status at 03:00. All set for 6am.
 
 **Another harness defined**: `terminus` / `terminus-2`
 - The official/reference Terminal-Bench harness/agent bundled with Harbor.

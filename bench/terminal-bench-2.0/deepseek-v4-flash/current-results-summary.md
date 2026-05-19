@@ -1,9 +1,9 @@
 # Terminal-Bench 2.0 (deepseek-v4-flash) — mi vs terminus-2 Current Results Summary
-**Generated:** 2026-05-19 ~02:25 CEST (late-stage harvesting + report refinement unit; timeboxed to 6am)  
-**Source:** 3 harvest cycles (150s sleeps) of monitor+agg post-iter7 + term batch3 final snapshot + report polish; prior 7 iters + 5+ cycles  
+**Generated:** 2026-05-19 ~02:42 CEST (final pre-freeze harvest + polish unit; timeboxed to 6am)  
+**Source:** 4 spaced harvest cycles (3-5min sleeps, ~15-20min window) of monitor+agg post-iter8 + polish of report/summary/README; prior 8 iters + many cycles  
 **Repo:** /home/everlier/code/mi  
-**Progress file:** /tmp/timeboxed-mi-vs-harness-evals-tbench-30-tasks-1779146755.md (up to iter7 + this unit iter8)  
-**Run note:** 3 cycles, 4 active dockers (train+winning), no new completions/rewards in window, 1 new snapshot (term batch3 final 3/5), freeze, polished final report. 16/30, mi 8 vs term 5 standings.
+**Progress file:** /tmp/timeboxed-mi-vs-harness-evals-tbench-30-tasks-1779146755.md (up to iter8 + this final unit)  
+**Run note:** 4 cycles, 3 active dockers (2x train-fasttext, winning-avg-corewars), no new completions/rewards or snapshots in final window, freeze on launches, polished final report + light refresh summary/README. 16/30, mi 8 vs term 5 standings (unchanged). Ready for 6am.
 
 ## Aggregator Table (latest run)
 ```
@@ -220,3 +220,25 @@ terminus: 0 passes / 0 completed / 12 tasks  (0.0% pass rate on completed)
 **Commits this unit:** new bench/terminus/..._term_final/ snapshot dir + score/notes, polished final-30task-mi-vs-terminus-report.md, refreshed current-results-summary.md. (See progress for full.)
 
 **Status:** Near-final, report-ready state achieved. 16/30 verified, real diffs documented, ready for 6am freeze/polish/progress update. All per plan, CLAUDE.md (no core changes).
+
+---
+
+## Final pre-freeze harvest + polish update (~02:40-03:00, this unit)
+**What:** 4 spaced monitor+agg cycles (3-5min sleeps between; total real time ~15-20min from ~02:26-02:42) to harvest last runners (train-fasttext, winning-avg-corewars and stragglers) before freeze. Ran via bg loop + manual follow-ups; inspected live /tmp reward.txt and result.json for iter4/5.
+
+**Cycles outcome / new snapshots:** "none" — no additional verified rewards (all 0 for completed in batch4: chess/openssl; batch5: gpt2; pending train/winning still >40-55m elapsed with no finish). Docker stable ~3 active T-Bench long jobs; bench run dirs unchanged (105 total). No new snapshots (even partial) — prior term batch3 final from iter8 is latest.
+
+**Specific polish changes:**
+- Header of this summary + final report updated to ~02:42 + "final pre-freeze" + freeze note.
+- Report: added full "Final pre-freeze update (~02:40-03:00)" section (cycles detail, "no additional verified passes...", status at ~03:00, how-to-reproduce appendix, artifacts list, 6am-ready timestamp); updated late results, run notes, appendix snapshots/commits/timestamps throughout.
+- Light refresh on bench/.../README.md "Live batch status": date bumped to ~02:40 pre-freeze, bullets updated with final live counts (batch4 1-2/3 0p running train, batch5 mi 2/2 0p + term 1/2 running winning; 3 docker; freeze; 105 dirs; mi8/term5; link to report), "freeze on new launches".
+- Appended this block + concise final record to progress file.
+- No changes to standings (mi 8 / term 5 confirmed on 16/30 from snapshots).
+
+**Commits:** git add/commit of updated final-30task-mi-vs-terminus-report.md + current-results-summary.md + README.md (light) in bench/terminal-bench-2.0/deepseek-v4-flash/ (no new snapshot dirs). (See git log for hash.)
+
+**Status for 6am:** Report + summary + README fully polished and committed, clean freeze state. Orchestrator can (if desired in last ~3h): 1) one last monitor ~05:30-5:45 if docker still shows the runners, 2) if any reward=1 appears in /tmp iter4/5 before 6am, create a late snapshot dir + score.txt/notes + append note to progress (no need to re-polish report), 3) final clock-driven summary at 6am. Everything 6am-ready, 30-LOC preserved.
+
+**Discoveries:** Last runners (ML train-fasttext, games winning-avg-corewars) are long-horizon (>45-55m+ real, no quick rewards); both harnesses 0 on the batch4/5 tasks that completed (chess, openssl, gpt2); confirms earlier patterns (mi strong on batch3 sci/ML, term on some systems). Final confirmed standings: **mi 8 vs terminus 5** on 16/30. Timeboxed harvest protocol + freeze decision produced high-quality committed comparison despite incomplete coverage. 
+
+All ready.

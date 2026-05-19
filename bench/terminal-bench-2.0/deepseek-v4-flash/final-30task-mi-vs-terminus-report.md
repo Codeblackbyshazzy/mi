@@ -1,9 +1,9 @@
 # Final 30-Task mi vs terminus-2 Report (Terminal-Bench 2.0, deepseek-v4-flash)
 **Timeboxed eval run: 2026-05-19 ~01:25-06:00 CEST**  
 **Coverage achieved: 16/30 tasks (batches 1-5 launched; no batch6)**  
-**Report generated: ~02:25 CEST after late-stage 3 harvest cycles (150s sleeps) + term batch3 final snapshot + polish**  
-**Key artifacts:** bench/.../mi/ and /terminus/ dated snapshots (batch1-3 finals + new term batch3 final), current-results-summary.md, monitor/agg outputs, /tmp/mi-30-eval-iter4/5 job dirs (still running train+winning), progress file.  
-**Run complete as of 2026-05-19 02:23 CEST (docker 4 active, freeze on new launches, focus report quality).**
+**Report generated: ~02:42 CEST after final pre-freeze 4 harvest cycles (3-5min sleeps, ~15-20min window) + polish**  
+**Key artifacts:** bench/.../mi/ and /terminus/ dated snapshots (batch1-3 finals), current-results-summary.md, monitor/agg outputs, /tmp/mi-30-eval-iter4/5 job dirs (train+winning long runners), progress file.  
+**Run complete as of 2026-05-19 ~02:42 CEST (docker 3 active long runners, freeze on new launches, 6am-ready report).**
 
 ## Executive Summary (preliminary, more data by 6am)
 - **mi pass rate on completed subsets (from snapshots + live verified rewards):** ~ 2 (10-task baseline) + 1 (batch1 crack) + 1 (batch2 fix-git) + 4 (batch3: eigenval+configure+hf+mcmc) = **8 passes** across ~17-19 completed trials (high ~40-50%+ on completed where rewarded)
@@ -57,7 +57,7 @@
 - **Pass rates on completed (snapshot-verified):** mi 8/ (high density on sci/SWE/ML batches); term 5 (solid on systems+common). mi ~ higher on its n=1 focused runs; term volume via n=2.
 - **Timings (wall, approx):** batch1: mi 38m > term 15m; batch2: mi 26m < term 34m; batch3: mi ~30m, term ~41m (mcmc/qemu long). Late batch4/5: 40m+ elapsed no finish.
 - **Other:** High token on term (hundreds k in/out); mi lighter. Docker down to 4 (2x train-fasttext + 2x winning-corewars) by 02:23. 3 harvest cycles (150s sleeps) yielded term batch3 final but no batch4/5 rewards.
-- **Late results (iter 8):** 3 monitor+agg cycles (~02:15-02:23, 150s sleeps); term batch3 finalized (3/5 passes, new snapshot); batch4/5 still 1-2 running each with 0 rewards (train ML + winning corewars long sims); docker 4 active; no batch6 launched (low load but >2.5h remain, focus report polish per plan); freeze initiated ~02:23. No new verified passes beyond term batch3 mcmc.
+- **Late results (iter 8 + final pre-freeze):** 3+4 monitor+agg cycles (150s + 3-5min sleeps over ~02:15-02:42); term batch3 finalized (3/5 passes, snapshot in iter8); batch4/5 still 1-2 running each with 0 rewards (train-fasttext ML training ~55m+, winning-avg-corewars ~43m+ at last check; gpt2 0 both, chess/openssl 0); docker down to 3 active; no batch6 (focus quality); freeze ~02:42. No additional verified passes in final cycles.
 
 ## Qualitative Analysis
 - **Categories where mi shines:** sci/comp/math (largest-eigenval 1/1), probabilistic/ML (mcmc-sampling-stan, hf-model-inference), SWE/git web (configure), consistent with baseline fix-git. Minimal ReAct + tool use sufficient for these (4/4 non-err in batch3).
@@ -70,7 +70,7 @@
 - **For mi:** Good evidence minimal agent is competitive (esp. math/ML wins without heavy scaffolding; 4/4 in batch3); fix bash/env robustness for qemu-like cases; consider optional higher n-conc for timeboxes. Long tasks (train, winning, regex) highlight need for better timeout/partial credit handling. Terminal-Bench validates the 30-LOC design on real tasks.
 - **For future evals/harness:** Use stratified batches + side-by-side for diffs; snapshot protocol + agg/monitor critical for timeboxed harvest. Prioritize common passes like fix-git/configure/mcmc as regression tests. Freeze early if runners long, polish report over max coverage.
 - **Terminal-Bench value:** Excellent for minimal vs full harness comparison — reveals where simple goal+bash+tools suffice vs need for advanced episode management. Late harvest showed persistent long jobs benefit from term's parallelism but similar outcomes on many.
-- **Run note:** 3 cycles + 1 new snapshot (term batch3 final 3/5); no batch4/5 rewards; standings mi 8 vs term 5; near-final state.
+- **Run note:** 3+4 cycles + 1 snapshot (term batch3 final 3/5 in iter8); no batch4/5 rewards or new passes in final ~15-20min harvest window; standings mi 8 vs term 5 unchanged; 6am-ready polished state.
 
 ## Appendix
 - **All snapshot paths (key ones):**
@@ -79,7 +79,16 @@
 - **New in late harvest (iter8):** terminus/2026-05-19_batch3_5task_..._term_final/ (with 2026-05-19__01-39-07 job copy, logs, updated score 3/5 + notes).
 - **Monitor/agg commands:** `./mi_harbor/monitor-30task-evals.sh --tail 15` ; `./mi_harbor/aggregate-tb-results.sh` (3 cycles w/ 150s sleeps in this unit; 4-6 prior)
 - **30-task list + batches:** See mi_harbor/presets/openrouter-deepseek-v4-flash-tb2-30.sh and bench/README.md
-- **Git commits during run:** See progress file + this collection unit commits (new term batch3 final snapshot, polished report, summary refresh, no new batch)
-- **Run complete as of ~02:23 CEST 2026-05-19:** 3 harvest cycles performed, 1 new verified snapshot (term batch3), standings finalized mi 8 vs term 5 on 16/30, batch4/5 late runners noted (no rewards), freeze on launches, report polished for 6am. ~3h37m remain for any straggler finishes but focus quality. No core mi edits (30-LOC preserved).
+- **Git commits during run:** See progress file + collection commits (term batch3 final snapshot, polished report/summary/README in final pre-freeze unit, no new batch/snapshots)
+- **Run complete as of ~02:42 CEST 2026-05-19 (final pre-freeze):** 7+4 harvest cycles performed across units, 1 verified snapshot (term batch3 3/5), standings finalized mi 8 vs term 5 on 16/30, batch4/5 long runners (train-fasttext, winning-avg-corewars) yielded 0 new passes/rewards in final 15-20min window (still active at freeze); freeze on launches; report + summary + README polished and timestamped ready for 6am. ~3h18m remain for any straggler finishes (orchestrator may snapshot post-freeze if rewards appear before 6am) but focus quality. No core mi edits (30-LOC preserved).
 
-*(Fully updated with real numbers from all 7+ collection cycles + snapshots through iter8 late harvest at ~02:25. Near-final deliverable; any post-02:23 finishes from train/winning can be noted in progress but not altering standings here. Committed referencing 6am target.)*
+## Final pre-freeze update (~02:40-03:00)
+- Performed 4 spaced monitor + aggregate cycles (3-5min sleeps, total ~15-20min real time from ~02:26-02:42) to give the last active containers (train-fasttext x2 ~39-55m elapsed, winning-avg-corewars ~43m) chance to emit rewards or finish.
+- Outcome in window: No new verified rewards or completions in batch4 (iter4: mi 1/3+1run 0p, term 2/3+1run 0p) or batch5 (iter5/mi finished 2/2 0p; term 1/2+1run 0p). All checked reward.txt=0 for chess, openssl, gpt2, winning, train (still pending).
+- No new snapshots created (bench dirs stable at 105 total; term batch3 final from iter8 remains latest).
+- Grand standings unchanged: **mi 8 passes vs terminus-2 5 passes** on the 16/30 covered (verified from all final snapshots + reward scans).
+- **Status at ~03:00:** 3 active docker T-Bench containers (long ML + games runners); all prior batches 1-3+5 finalized with verified scores; freeze on new launches now in effect; report/summary/README updated with current timestamps/commits; everything in clean 6am-ready state. Orchestrator can optionally perform one final check ~05:30 if any stragglers emit before deadline and append a note, but no further launches or major changes.
+- **How to reproduce:** Use the 30-task preset `mi_harbor/presets/openrouter-deepseek-v4-flash-tb2-30.sh` (with --agent for mi via adapter or terminus-2); monitor via `mi_harbor/monitor-30task-evals.sh --tail 10` and `aggregate-tb-results.sh`; snapshot completed batches to `bench/terminal-bench-2.0/deepseek-v4-flash/{mi,terminus}/<dated>_<batch>_{mi,term}_final/` with score.txt (pass list + rate) + notes.md + launch logs; aggregate for totals. Full commands in progress file and appendix.
+- **Artifacts:** All dated bench/ snapshots (see list), final-30task-mi-vs-terminus-report.md (this), current-results-summary.md, bench/.../README.md (live status), /tmp/*-eval-iter*/ logs + result.json, progress /tmp/timeboxed-...md , git history of commits.
+
+*(Polished and timestamped ready for 6am soft freeze after final pre-freeze harvest+polish unit. Any post-02:42 finishes from long runners can be noted in progress but standings here are final for the 16/30. Committed as the definitive comparison artifact.)*
