@@ -1,0 +1,26 @@
+New Terminal Output:
+
+> pip list 2>/dev/null | head -30
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

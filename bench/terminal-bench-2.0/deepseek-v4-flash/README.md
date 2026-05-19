@@ -43,16 +43,17 @@ It is the concrete artifact for advancing the timeboxed 30-task Terminal-Bench g
 **30 tasks list**:
 count-dataset-tokens train-fasttext caffe-cifar-10 fix-code-vulnerability sanitize-git-repo adaptive-rejection-sampler dna-assembly fix-git torch-tensor-parallelism gpt2-codegolf llm-inference-batching-scheduler break-filter-js-from-html reshard-c4-data write-compressor merge-diff-arc-agi-task winning-avg-corewars log-summary-date-ranges pytorch-model-cli largest-eigenval regex-chess crack-7z-hash db-wal-recovery path-tracing polyglot-c-py mcmc-sampling-stan hf-model-inference qemu-startup configure-git-webserver chess-best-move openssl-selfsigned-cert
 
-**Live batch status (timeboxed 30-task eval, final pre-freeze harvest + polish ~02:40 CEST 2026, after 4 spaced monitor/agg cycles + freeze)**:
+**Live batch status (timeboxed 30-task eval, final pre-freeze harvest + polish ~02:40 + spaced checkpoint ~02:45 CEST 2026)**:
 - Batch 1 (2 tasks): regex-chess, crack-7z-hash — **mi final 1/2 (crack-7z pass)**; **term final 1/2 (crack-7z pass)**; snapshots `..._batch1_*_final/`
 - Batch 2 (4 tasks): fix-git etc. — **mi final 1/4 (fix-git only)**; **term final 1/4 (fix-git only)**; snapshots `..._batch2_*_final/`
 - Batch 3 (5 tasks): largest-eigenval etc. — **mi final 4/4 completed passes** (eigenval+configure+hf+mcmc); **term final 3/5** (configure+mcmc+qemu); snapshots `..._batch3_*_final/` (term updated iter8)
-- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4; mi 1/3+1 running (train), 0p; term 2/3+1 running (train), 0p; live /tmp/mi-30-eval-iter4/* (train ~55m+)
-- Batch 5 (2 tasks): winning-avg-corewars + gpt2-codegolf — mi 2/2 finished 0p (gpt2 0); term 1/2+1 running (winning ~43m+), 0p; live /tmp/...iter5/*
+- Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4; mi 1/3+1 running (train), 0p; **term final 3/3 0p (late snapshot created)**; live /tmp/mi-30-eval-iter4/* 
+- Batch 5 (2 tasks): winning-avg-corewars + gpt2-codegolf — mi 2/2 finished 0p (gpt2 0); term 1/2+1 running (winning), 0p; live /tmp/...iter5/*
 - **Final pre-freeze (this unit, ~02:26-02:42, 4 cycles 3-5min sleeps):** 3 active docker (2x train-fasttext, 1x winning); **no new completions or reward=1** in batch4/5 during window (all verified 0 where done); no new snapshots; bench dirs 105 total; freeze on new launches now; 16/30 covered.
 - **Status checkpoint at ~02:42 (light unit, right at freeze):** ran monitor+agg+full docker/job inspect (3 containers: 2x train batch4 + term winning batch5; mi winning batch5 now finished reward=0, batch iter5/mi 2/2); **no reward=1**; created late snapshot `mi/2026-05-19_batch5_2task_winning_gpt2_mi_final/` (0/2, see score/notes); README + progress updated; standings confirmed mi 8 vs term 5. 3 runners remain (trains+term winning). Report 6am-ready.
-- Monitor/agg robust; live rewards via reward.txt=0 confirmed; 10-task mi 2/10.
-- **Standings (verified from snapshots):** mi 8 passes vs terminus-2 5 passes. See `final-30task-mi-vs-terminus-report.md` (polished with Final pre-freeze update section, how-to-repro, 6am-ready) + current-results-summary.md for full tables, diffs, recs, status at 03:00. All set for 6am. (Batch5 mi final snapshot added in checkpoint.)
+- **Spaced checkpoint at ~02:45 (~30min after 02:42):** monitor + aggregator + inspect of 3 stragglers (train x2, winning term); **term train-fasttext finished (reward=0, docker exited)**, mi train + term winning still running (no reward.txt); **created late snapshot `terminus/2026-05-19_batch4_3task_chess_openssl_train_term_final/` (0/3, see score/notes)**; docker now 2; **no reward=1**; standings mi 8/term 5 confirmed; progress/README updated. 2 runners remain. 6am-ready.
+- Monitor/agg robust; live rewards via reward.txt=0 confirmed; 10-task mi 2/10. Total run dirs: 116.
+- **Standings (verified from snapshots):** mi 8 passes vs terminus-2 5 passes. See `final-30task-mi-vs-terminus-report.md` (polished with Final pre-freeze update section, how-to-repro, 6am-ready) + current-results-summary.md for full tables, diffs, recs, status at 03:00. All set for 6am. (Batch5 mi + batch4 term late snapshots.)
 
 **Another harness defined**: `terminus` / `terminus-2`
 - The official/reference Terminal-Bench harness/agent bundled with Harbor.
