@@ -50,8 +50,9 @@ count-dataset-tokens train-fasttext caffe-cifar-10 fix-code-vulnerability saniti
 - Batch 4 (3 tasks): chess-best-move, openssl-selfsigned-cert, train-fasttext — launched iter4; mi 1/3+1 running (train), 0p; term 2/3+1 running (train), 0p; live /tmp/mi-30-eval-iter4/* (train ~55m+)
 - Batch 5 (2 tasks): winning-avg-corewars + gpt2-codegolf — mi 2/2 finished 0p (gpt2 0); term 1/2+1 running (winning ~43m+), 0p; live /tmp/...iter5/*
 - **Final pre-freeze (this unit, ~02:26-02:42, 4 cycles 3-5min sleeps):** 3 active docker (2x train-fasttext, 1x winning); **no new completions or reward=1** in batch4/5 during window (all verified 0 where done); no new snapshots; bench dirs 105 total; freeze on new launches now; 16/30 covered.
+- **Status checkpoint at ~02:42 (light unit, right at freeze):** ran monitor+agg+full docker/job inspect (3 containers: 2x train batch4 + term winning batch5; mi winning batch5 now finished reward=0, batch iter5/mi 2/2); **no reward=1**; created late snapshot `mi/2026-05-19_batch5_2task_winning_gpt2_mi_final/` (0/2, see score/notes); README + progress updated; standings confirmed mi 8 vs term 5. 3 runners remain (trains+term winning). Report 6am-ready.
 - Monitor/agg robust; live rewards via reward.txt=0 confirmed; 10-task mi 2/10.
-- **Standings (verified from snapshots):** mi 8 passes vs terminus-2 5 passes. See `final-30task-mi-vs-terminus-report.md` (polished with Final pre-freeze update section, how-to-repro, 6am-ready) + current-results-summary.md for full tables, diffs, recs, status at 03:00. All set for 6am.
+- **Standings (verified from snapshots):** mi 8 passes vs terminus-2 5 passes. See `final-30task-mi-vs-terminus-report.md` (polished with Final pre-freeze update section, how-to-repro, 6am-ready) + current-results-summary.md for full tables, diffs, recs, status at 03:00. All set for 6am. (Batch5 mi final snapshot added in checkpoint.)
 
 **Another harness defined**: `terminus` / `terminus-2`
 - The official/reference Terminal-Bench harness/agent bundled with Harbor.
